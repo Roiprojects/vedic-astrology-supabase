@@ -1,0 +1,600 @@
+@import "tailwindcss";
+
+/*
+  Vedic Astrology — Premium spiritual design system
+  Palette derived from the brand logo: gold zodiac wheel + Om on a burnt-saffron
+  field, set against a deep warm temple-night background.
+*/
+
+@theme {
+  /* Surfaces — warm ivory / parchment, tuned to the logo's gold-on-cream feel */
+  --color-bg: #faf4e8;
+  --color-bg-soft: #f3ead8;
+  --color-surface: #fffdf7;
+  --color-surface-2: #f6eddb;
+  --color-overlay: #fffdf8;
+
+  /* Warm ember scale (drives the brand washes; replaces the old purple) */
+  --color-purple-950: #1c0a05;
+  --color-purple-900: #2a0f08;
+  --color-purple-800: #3e160c;
+  --color-purple-700: #5c2210;
+  --color-purple-600: #8a3413;
+  --color-purple-500: #c0491d;
+  --color-purple-400: #e2732f;
+
+  /* Saffron / burnt orange (CTA + brand warmth) */
+  --color-saffron: #f0842e;
+  --color-saffron-deep: #d9641c;
+  --color-ember: #bd471d;
+
+  /* Antique gold — tuned for readability on cream (gold-light = accent TEXT) */
+  --color-gold: #c1912f;
+  --color-gold-light: #9c6a15;
+  --color-gold-deep: #7c5210;
+  --color-gold-muted: #b0955c;
+
+  /* Dark maroon */
+  --color-maroon: #4a0f1a;
+  --color-maroon-deep: #340a12;
+
+  /* Ink / text — deep warm brown on cream */
+  --color-ink: #2a1608;
+  --color-muted: #6a5340;
+  --color-faint: #94795f;
+
+  /* Status */
+  --color-online: #3ad67f;
+  --color-danger: #e5484d;
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-cormorant), ui-serif, Georgia, serif;
+  --font-display: var(--font-cinzel), ui-serif, Georgia, serif;
+
+  /* Radii */
+  --radius-xl2: 1.5rem;
+
+  /* Shadows */
+  --shadow-glow-gold: 0 0 0 1px rgba(193, 145, 47, 0.28), 0 20px 50px -24px rgba(193, 145, 47, 0.35);
+  --shadow-glow-purple: 0 24px 60px -30px rgba(224, 115, 47, 0.35);
+  --shadow-card: 0 22px 44px -26px rgba(74, 15, 26, 0.16);
+
+  /* Animations */
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-float-slow: float 11s ease-in-out infinite;
+  --animate-twinkle: twinkle 4.2s ease-in-out infinite;
+  --animate-glow: glow 3.6s ease-in-out infinite;
+  --animate-shimmer: shimmer 3.5s linear infinite;
+  --animate-spin-slow: spin 60s linear infinite;
+  --animate-spin-reverse: spin-reverse 90s linear infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+@keyframes glow {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes spin-reverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  * {
+    border-color: color-mix(in oklab, var(--color-gold) 32%, transparent);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(1200px 720px at 80% -10%, rgba(240, 132, 46, 0.10), transparent 60%),
+      radial-gradient(900px 620px at 4% 0%, rgba(217, 178, 95, 0.12), transparent 55%),
+      radial-gradient(1100px 900px at 50% 120%, rgba(193, 145, 47, 0.07), transparent 62%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-saffron) 55%, transparent);
+    color: #1a0a04;
+  }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--color-bg); }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(var(--color-gold-deep), var(--color-ember));
+    border-radius: 9999px;
+    border: 2px solid var(--color-bg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .container-x {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 1024px) {
+    .container-x { padding-inline: 2rem; }
+  }
+
+  /* Gold gradient text */
+  .text-gold-gradient {
+    background: linear-gradient(100deg, #c1912f 0%, #9c6a15 38%, #7c5210 70%, #b98a2a 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Bright shimmering gold text — for dark saffron backgrounds */
+  .text-gold-shine {
+    background: linear-gradient(100deg, #ffe6a8 0%, #f4bc55 38%, #e79a2b 58%, #ffe6a8 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Glass / temple card — light frosted parchment */
+  .glass-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 253, 247, 0.82));
+    backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in oklab, var(--color-gold) 34%, transparent);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Rich saffron→maroon band used on inner-page heroes (matches the homepage). */
+  .warm-band {
+    background:
+      radial-gradient(120% 90% at 72% 15%, rgba(255, 197, 92, 0.38), transparent 55%),
+      radial-gradient(90% 70% at 10% 90%, rgba(120, 30, 18, 0.5), transparent 60%),
+      linear-gradient(120deg, #5c1c0c 0%, #a5390f 46%, #7d2512 74%, #48121b 100%);
+  }
+
+  /* Aurora sheen for hero/CTA panels */
+  .warm-aurora {
+    background:
+      radial-gradient(60% 80% at 20% 10%, rgba(240, 132, 46, 0.12), transparent 60%),
+      radial-gradient(70% 90% at 90% 20%, rgba(217, 178, 95, 0.12), transparent 60%),
+      radial-gradient(80% 90% at 50% 120%, rgba(193, 145, 47, 0.08), transparent 60%);
+  }
+
+  .gold-hairline {
+    border-bottom: 1px solid color-mix(in oklab, var(--color-gold) 30%, transparent);
+  }
+
+  /* Divine glow ring behind hero elements */
+  .divine-glow {
+    box-shadow: var(--shadow-glow-purple);
+  }
+
+  /* Shimmering gold border used on premium CTAs */
+  .btn-shimmer {
+    background-image: linear-gradient(
+      110deg,
+      transparent 20%,
+      rgba(244, 220, 156, 0.55) 45%,
+      rgba(244, 220, 156, 0.15) 55%,
+      transparent 75%
+    );
+    background-size: 200% 100%;
+  }
+}
+
+.app-root {
+  --color-midnight: #080A18;
+  --color-indigo: #11152F;
+  --color-violet: #27205B;
+  --color-antique: #D6AE57;
+  --color-champagne: #F3D899;
+  --color-ivory: #FFF9EE;
+  --color-charcoal: #161616;
+  background: #080A18;
+  color: #FFF9EE;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-root input,
+.app-root select,
+.app-root textarea {
+  color-scheme: dark;
+  font: inherit;
+}
+
+.app-screen {
+  width: 100%;
+  max-width: 32rem;
+  margin-inline: auto;
+  padding: 1rem 1.25rem 1.5rem;
+}
+
+.app-kicker {
+  margin: 0;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: color-mix(in oklab, #D6AE57 85%, transparent);
+}
+
+.app-title {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.85rem;
+  line-height: 1.15;
+  color: #FFF9EE;
+}
+
+.app-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: color-mix(in oklab, #F3D899 72%, transparent);
+}
+
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+}
+
+.app-btn:active {
+  transform: scale(0.96);
+}
+
+.app-btn-sm {
+  min-height: 2.25rem;
+  padding: 0 0.75rem;
+  font-size: 0.75rem;
+}
+
+.app-btn:disabled {
+  opacity: 0.4;
+}
+
+.app-btn-primary {
+  background: linear-gradient(170deg, #F3D899 0%, #D6AE57 60%, #c1912f 100%);
+  color: #080A18;
+  box-shadow: 0 4px 20px -6px rgba(214, 174, 87, 0.55);
+}
+
+.app-btn-primary:active {
+  box-shadow: 0 2px 10px -4px rgba(214, 174, 87, 0.35);
+}
+
+.app-btn-gold,
+.app-btn-ghost {
+  background: transparent;
+  border-color: color-mix(in oklab, #D6AE57 40%, transparent);
+  color: #F3D899;
+}
+
+.app-btn-whatsapp {
+  background: #25D366;
+  color: #052e16;
+}
+
+.app-btn-danger {
+  background: transparent;
+  border-color: color-mix(in oklab, #e5484d 45%, transparent);
+  color: #e5484d;
+}
+
+.app-btn-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.app-btn-row > * {
+  width: 100%;
+  min-width: 0;
+}
+
+.app-icon-btn {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, #D6AE57 32%, transparent);
+  background: #11152F;
+  color: #F3D899;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+}
+
+.app-icon-btn:active {
+  transform: scale(0.93);
+  background: #1b2144;
+}
+
+.app-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #D6AE57;
+}
+
+.app-chip {
+  flex: 0 0 auto;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.85rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, #D6AE57 28%, transparent);
+  background: transparent;
+  color: #F3D899;
+  font-size: 0.75rem;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease;
+  cursor: pointer;
+}
+
+.app-chip:active {
+  transform: scale(0.95);
+}
+
+.app-chip-active {
+  background: #D6AE57;
+  border-color: #D6AE57;
+  color: #080A18;
+}
+
+.app-hscroll {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-hscroll::-webkit-scrollbar {
+  display: none;
+  height: 0;
+}
+
+.app-field {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #D6AE57;
+}
+
+.app-field input,
+.app-field select,
+.app-input {
+  width: 100%;
+  margin-top: 0.4rem;
+  min-height: 3rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in oklab, #D6AE57 28%, transparent);
+  background: #11152F;
+  padding: 0 0.95rem;
+  font-size: 0.9rem;
+  color: #FFF9EE;
+  outline: none;
+  appearance: none;
+}
+
+.app-field select,
+.app-input-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23D6AE57' d='M1.2.6 6 5.4 10.8.6 12 1.8 6 7.8 0 1.8z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  background-size: 11px;
+  padding-right: 2.4rem;
+}
+
+.app-card {
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in oklab, #D6AE57 22%, transparent);
+  background: linear-gradient(160deg, #141934 0%, #11152F 100%);
+  box-shadow: 0 8px 32px -12px rgba(8, 10, 24, 0.6);
+}
+
+.app-card-ivory {
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in oklab, #D6AE57 18%, transparent);
+  background: #FFF9EE;
+  color: #161616;
+}
+
+.app-list {
+  overflow: hidden;
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in oklab, #D6AE57 20%, transparent);
+  box-shadow: 0 8px 32px -12px rgba(8, 10, 24, 0.5);
+}
+
+.app-list a,
+.app-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.35rem;
+  padding: 0.85rem 1rem;
+  background: linear-gradient(160deg, #141934 0%, #11152F 100%);
+  border-bottom: 1px solid color-mix(in oklab, #D6AE57 10%, transparent);
+  font-size: 0.9rem;
+  transition: background 0.15s ease;
+}
+
+.app-list a:active {
+  background: #1b2144;
+}
+
+.app-list a:last-child,
+.app-list-row:last-child {
+  border-bottom: 0;
+}
+
+.app-composer {
+  display: grid;
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.app-composer input {
+  min-height: 2.75rem;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, #D6AE57 28%, transparent);
+  background: #11152F;
+  padding: 0 1rem;
+  font-size: 0.9rem;
+  color: #FFF9EE;
+  outline: none;
+}
+
+.app-tile {
+  display: flex;
+  min-height: 5.6rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 1.15rem;
+  border: 1px solid color-mix(in oklab, #D6AE57 20%, transparent);
+  background: linear-gradient(170deg, #16193e 0%, #11152F 100%);
+  padding: 0.6rem 0.4rem;
+  text-align: center;
+  transition: border-color 0.2s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.app-tile:active {
+  transform: scale(0.95);
+  border-color: color-mix(in oklab, #D6AE57 45%, transparent);
+  box-shadow: 0 0 16px -6px rgba(214, 174, 87, 0.3);
+}
+
+.app-discover-card {
+  display: flex;
+  min-height: 9.25rem;
+  flex-direction: column;
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in oklab, #D6AE57 18%, transparent);
+  background: #FFF9EE;
+  padding: 1rem;
+  color: #161616;
+}
+
+.va-skeleton {
+  border-radius: 1rem;
+  background: linear-gradient(90deg, #11152F 0%, #1b2144 50%, #11152F 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.va-stars {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(243, 216, 153, 0.45), transparent),
+    radial-gradient(1px 1px at 78% 22%, rgba(214, 174, 87, 0.35), transparent),
+    radial-gradient(1.4px 1.4px at 64% 68%, rgba(243, 216, 153, 0.28), transparent);
+}
+
+.va-pulse-online {
+  animation: va-online 1.8s ease-out infinite;
+}
+
+@keyframes va-online {
+  0% { box-shadow: 0 0 0 0 rgba(58, 214, 127, 0.55); }
+  100% { box-shadow: 0 0 0 8px rgba(58, 214, 127, 0); }
+}
+
+.va-orbit {
+  animation: va-orbit-spin 12s linear infinite;
+}
+
+@keyframes va-orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.va-scan {
+  animation: va-scan-move 1.2s ease-in-out infinite;
+}
+
+@keyframes va-scan-move {
+  0% { top: 12%; opacity: 0.3; }
+  50% { top: 70%; opacity: 1; }
+  100% { top: 12%; opacity: 0.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

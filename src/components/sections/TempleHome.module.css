@@ -1,0 +1,59 @@
+.hero {
+  background:
+    radial-gradient(circle at 70% 44%, rgba(255, 236, 170, 0.55), rgba(255, 170, 60, 0.22) 26%, transparent 50%),
+    linear-gradient(90deg, rgba(45, 14, 8, 0.82), rgba(151, 48, 12, 0.4) 52%, rgba(40, 13, 22, 0.58)),
+    linear-gradient(135deg, #6f220d 0%, #d96213 52%, #641b12 100%);
+}
+
+/* Divine aura — a radiant core with god-rays (halo) emanating behind the deity */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.34;
+  background-image:
+    radial-gradient(circle at 70% 44%, rgba(255, 244, 200, 0.85) 0 5%, transparent 12%),
+    repeating-conic-gradient(from 0deg at 70% 44%, rgba(255, 228, 155, 0.5) 0 1.3deg, transparent 1.3deg 24deg);
+  mask-image: radial-gradient(circle at 70% 44%, black 0 9%, rgba(0, 0, 0, 0.55) 34%, transparent 64%);
+  animation: heroAura 7s ease-in-out infinite;
+}
+
+@keyframes heroAura {
+  0%,
+  100% {
+    opacity: 0.14;
+  }
+  50% {
+    opacity: 0.26;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero::before {
+    animation: none;
+  }
+}
+
+.paper {
+  background-color: #fff3d5;
+  background-image:
+    linear-gradient(rgba(119, 66, 20, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(119, 66, 20, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at 12% 18%, rgba(225, 137, 42, 0.12), transparent 30%);
+  background-size: 38px 38px, 38px 38px, auto;
+}
+
+.night {
+  background:
+    radial-gradient(circle at 85% 20%, rgba(217, 100, 28, 0.16), transparent 28%),
+    radial-gradient(circle at 16% 80%, rgba(193, 145, 47, 0.1), transparent 30%),
+    #1f0e1c;
+}
+
+.arch {
+  clip-path: polygon(0 18%, 8% 18%, 8% 12%, 15% 12%, 15% 7%, 23% 7%, 23% 3%, 32% 3%, 32% 0, 68% 0, 68% 3%, 77% 3%, 77% 7%, 85% 7%, 85% 12%, 92% 12%, 92% 18%, 100% 18%, 100% 100%, 0 100%);
+}
+
+.goldRule {
+  background: linear-gradient(90deg, transparent, #d7aa48 18%, #f7d98e 50%, #d7aa48 82%, transparent);
+}

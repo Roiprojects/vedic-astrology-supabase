@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Build output (rebuilt on deploy)
+dist/
+
+# Environment — never commit secrets
+.env
+.env.local
+.env.*.local
+
+# Uploads — restore separately, do not git-track
+public/uploads/
+
+# Supabase local dev (not needed in production)
+supabase/.temp/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# APK build artifacts
+apk/
+
+# Android
+android/
