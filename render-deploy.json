@@ -1,0 +1,31 @@
+{
+  "type": "web_service",
+  "name": "vedic-astrology-api",
+  "ownerId": "tea-dal85klbedkc73bk07e0",
+  "repo": "https://github.com/Roiprojects/vedic-astrology-supabase",
+  "runtime": "node",
+  "plan": "free",
+  "region": "singapore",
+  "buildCommand": "npm install && npm run build",
+  "startCommand": "node --import=tsx/esm server/index.ts",
+  "serviceDetails": {},
+  "envVars": [
+    {"key": "NODE_ENV", "value": "production"},
+    {"key": "PORT", "value": "3002"},
+    {"key": "SUPABASE_URL", "value": "https://bosnejioiwiqfcpwwnbi.supabase.co"},
+    {"key": "SUPABASE_ANON_KEY", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvc25lamlvaXdpcWZjcHd3bmJpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NDgwOTcsImV4cCI6MjA5OTMyNDA5N30.5fi4Uw5sdqvsnmQyBXCc0FR6zsdfOPQqAwO6jVdi4aU"},
+    {"key": "SUPABASE_SERVICE_ROLE_KEY", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvc25lamlvaXdpcWZjcHd3bmJpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4Mzc0ODA5NywiZXhwIjoyMDk5MzI0MDk3fQ.O--zzznNHqDQ8IalfoUErM7VfoG-3sJ1fjAAuq5VFnI"},
+    {"key": "DATABASE_URL", "value": "postgresql://postgres.bosnejioiwiqfcpwwnbi:Pramod%400605@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"},
+    {"key": "JWT_SECRET", "value": "vedic-admin-jwt-secret-2026-secure"},
+    {"key": "ADMIN_EMAIL", "value": "info@myvedicastrology.in"},
+    {"key": "ADMIN_PASSWORD", "value": "Admin@123"},
+    {"key": "RAZORPAY_KEY_ID", "value": "rzp_live_TLyBF9AdhqAZBX"},
+    {"key": "RAZORPAY_KEY_SECRET", "value": "68MMbc95ZbJT6av3Tqk2siA8"},
+    {"key": "SMTP_HOST", "value": "mail.myvedicastrology.in"},
+    {"key": "SMTP_PORT", "value": "587"},
+    {"key": "SMTP_USER", "value": "info@myvedicastrology.in"},
+    {"key": "SMTP_PASS", "value": "1qLVTZ0vOgFkx"},
+    {"key": "SMTP_FROM", "value": "info@myvedicastrology.in"},
+    {"key": "FRONTEND_URL", "value": "https://dist-wheat-nine-28.vercel.app"}
+  ]
+}
