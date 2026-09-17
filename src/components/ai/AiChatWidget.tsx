@@ -122,25 +122,12 @@ export function AiChatWidget() {
         return;
       }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      while (!done) {
-        const { done: streamDone, value } = await reader.read();
-        done = streamDone;
-        if (value) {
-          const chunk = decoder.decode(value, { stream: true });
-          setMessages((prev) => {
-            const next = [...prev];
-            const last = next[next.length - 1];
-            next[next.length - 1] = {
-              role: "assistant",
-              content: last.content + chunk,
-            };
-            return next;
-          });
-        }
-      }
+      const text = await res.text();
+      setMessages((prev) => {
+        const next = [...prev];
+        next[next.length - 1] = { role: "assistant", content: text };
+        return next;
+      });
     } catch {
       setMessages((prev) => {
         const next = [...prev];

@@ -221,28 +221,20 @@ export function ServiceAiChat() {
         }),
       });
 
-      if (!response.ok || !response.body) {
+      if (!response.ok) {
         const data = await response.json().catch(() => null);
         throw new Error(data?.error || "The assistant is unavailable right now.");
       }
 
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let done = false;
-      while (!done) {
-        const part = await reader.read();
-        done = part.done;
-        if (!part.value) continue;
-        const chunk = decoder.decode(part.value, { stream: true });
-        setMessages((current) => {
-          const next = [...current];
-          next[next.length - 1] = {
-            role: "assistant",
-            content: next[next.length - 1].content + chunk,
-          };
-          return next;
-        });
-      }
+      const text = await response.text();
+      setMessages((current) => {
+        const next = [...current];
+        next[next.length - 1] = {
+          role: "assistant",
+          content: text,
+        };
+        return next;
+      });
     } catch (error) {
       setMessages((current) => {
         const next = [...current];

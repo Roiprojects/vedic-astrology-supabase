@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 
-// ─── AI client (Gemini → OpenAI streaming) ────────────────────────────────────
+// ─── AI client (Gemini → OpenAI, non-streaming) ────────────────────────────────
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const geminiModel = process.env.GEMINI_MODEL || "gemini-3.6-flash";
@@ -33,14 +33,11 @@ function buildSystemPrompt(serviceTitle: string | null): string {
   return prompt;
 }
 
-async function geminiStream(
+async function geminiComplete(
   systemPrompt: string,
-  messages: { role: string; content: string }[],
-  onChunk: (text: string) => void
-): Promise<void> {
-  if (!geminiKey) throw new Error("No Gemini key");
-  const model = geminiModel;
-  const url = `${GEMINI_BASE}/${model}:streamGenerateContent?key=${encodeURIComponent(geminiKey)}&alt=sse`;
+  messages: { role: string; content: string }[]
+): Promise<string> {
+  const url = `${GEMINI_BASE}/${geminiModel}?key=${encodeURIComponent(geminiKey!)}`;
 
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
@@ -59,45 +56,23 @@ async function geminiStream(
     body: JSON.stringify(body),
   });
 
-  if (!upstream.ok || !upstream.body) {
+  if (!upstream.ok) {
     const txt = await upstream.text().catch(() => "");
     throw new Error(`Gemini ${upstream.status}: ${txt.slice(0, 200)}`);
   }
 
-  const reader = upstream.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const data = trimmed.slice(5).trim();
-      if (!data || data === "[DONE]") continue;
-      try {
-        const json = JSON.parse(data);
-        const parts = json?.candidates?.[0]?.content?.parts;
-        if (Array.isArray(parts)) {
-          const text = parts.map((p: any) => typeof p?.text === "string" ? p.text : "").join("");
-          if (text) onChunk(text);
-        }
-      } catch { /* skip */ }
-    }
+  const json = await upstream.json();
+  const parts = json?.candidates?.[0]?.content?.parts;
+  if (Array.isArray(parts)) {
+    return parts.map((p: any) => typeof p?.text === "string" ? p.text : "").join("");
   }
-  reader.releaseLock();
+  return "";
 }
 
-async function openAIStream(
+async function openAIComplete(
   systemPrompt: string,
-  messages: { role: string; content: string }[],
-  onChunk: (text: string) => void
-): Promise<void> {
-  if (!openAIKey) throw new Error("No OpenAI key");
+  messages: { role: string; content: string }[]
+): Promise<string> {
   const url = `${OPENAI_BASE}/chat/completions`;
   const body = {
     model: openaiModel,
@@ -107,46 +82,24 @@ async function openAIStream(
     ],
     max_tokens: 700,
     temperature: 0.8,
-    stream: true,
   };
 
   const upstream = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${openAIKey}`,
+      Authorization: `Bearer ${openaiKey!}`,
     },
     body: JSON.stringify(body),
   });
 
-  if (!upstream.ok || !upstream.body) {
+  if (!upstream.ok) {
     const txt = await upstream.text().catch(() => "");
     throw new Error(`OpenAI ${upstream.status}: ${txt.slice(0, 200)}`);
   }
 
-  const reader = upstream.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith("data:")) continue;
-      const data = trimmed.slice(5).trim();
-      if (!data || data === "[DONE]") continue;
-      try {
-        const json = JSON.parse(data);
-        const text = json?.choices?.[0]?.delta?.content;
-        if (typeof text === "string" && text) onChunk(text);
-      } catch { /* skip */ }
-    }
-  }
-  reader.releaseLock();
+  const json = await upstream.json();
+  return json?.choices?.[0]?.message?.content ?? "";
 }
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
@@ -155,18 +108,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log("[chat] invoked, method:", req.method);
   console.log("[chat] GEMINI_API_KEY set:", !!process.env.GEMINI_API_KEY);
   console.log("[chat] OPENAI_API_KEY set:", !!process.env.OPENAI_API_KEY);
-  console.log("[chat] GEMINI_MODEL:", process.env.GEMINI_MODEL);
-  console.log("[chat] OPENAI_MODEL:", process.env.OPENAI_MODEL);
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // CORS headers
+  // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
@@ -199,46 +149,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const systemPrompt = buildSystemPrompt(serviceTitle);
-
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
 
-  const hasKey = geminiKey || openAIKey;
-  if (!hasKey) {
+  const hasGemini = !!geminiKey;
+  const hasOpenAI = !!openaiKey;
+
+  if (!hasGemini && !hasOpenAI) {
     console.error("[chat] no API keys configured");
     return res.status(503).json({ error: "The AI service is not configured." });
   }
-  console.log("[chat] Gemini key:", !!geminiKey, "OpenAI key:", !!openAIKey, "model:", geminiModel, "/", openaiModel);
 
-  // Stream the response — try Gemini first, fall back to OpenAI
+  let reply = "";
   try {
-    if (geminiKey) {
+    if (hasGemini) {
+      console.log("[chat] trying Gemini...");
       try {
-        console.log("[chat] trying Gemini...");
-        await geminiStream(systemPrompt, clean, (text) => res.write(text));
-        console.log("[chat] Gemini stream complete");
-        return res.end();
+        reply = await geminiComplete(systemPrompt, clean);
+        console.log("[chat] Gemini reply length:", reply.length);
+        if (reply.trim()) return res.send(reply.trim());
       } catch (geminiErr) {
         console.error("[chat] Gemini failed:", geminiErr instanceof Error ? geminiErr.message : geminiErr);
-        // Fall through to OpenAI
       }
     }
 
-    if (openAIKey) {
+    if (hasOpenAI) {
+      console.log("[chat] trying OpenAI...");
       try {
-        console.log("[chat] trying OpenAI...");
-        await openAIStream(systemPrompt, clean, (text) => res.write(text));
-        console.log("[chat] OpenAI stream complete");
-        return res.end();
+        reply = await openAIComplete(systemPrompt, clean);
+        console.log("[chat] OpenAI reply length:", reply.length);
+        if (reply.trim()) return res.send(reply.trim());
       } catch (openaiErr) {
         console.error("[chat] OpenAI failed:", openaiErr instanceof Error ? openaiErr.message : openaiErr);
       }
     }
 
-    console.error("[chat] all providers failed");
+    console.error("[chat] all providers returned empty or failed");
     return res.status(503).json({ error: "The AI service is not configured." });
   } catch (err) {
-    console.error("[chat] stream error:", err instanceof Error ? err.message : err);
+    console.error("[chat] unexpected error:", err instanceof Error ? err.message : err);
     if (!res.headersSent) {
       return res.status(500).json({ error: "The assistant is unavailable right now. Please try again." });
     }
