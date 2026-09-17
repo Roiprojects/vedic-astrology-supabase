@@ -16,8 +16,6 @@ function json(res: VercelResponse, code: number, data: any) {
   res.status(code).setHeader("Content-Type", "application/json").json(data);
 }
 
-// ─── Public read-only handlers ──────────────────────────────────────────────
-
 async function publicServices(res: VercelResponse, slug?: string) {
   if (slug) {
     const { data } = await supa.from("services").select("*").eq("slug", slug).eq("active", true).maybeSingle();
@@ -322,9 +320,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!email || !password) return json(res, 400, { error: "Email and password required" });
       const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
       const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-      const secret = process.env.JWT_SECRET || "fallback";
-      const token = jwt.sign({ isAdmin: true, email }, secret, { expiresIn: "24h" });
-      res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
+      if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return json(res, 401, { error: "Invalid credentials" });
       return json(res, 200, { ok: true, user: { email } });
     }
     if (action === "logout" && req.method === "POST") {
