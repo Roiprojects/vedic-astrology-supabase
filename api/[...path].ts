@@ -16,8 +16,8 @@ const corsHeaders = (res: VercelResponse) => {
 
 function json(res: VercelResponse, code: number, data: any) {
   const body = JSON.stringify(data);
-  res.writeHead(code, { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) });
-  res.end(body);
+  res.status(code).setHeader("Content-Type", "application/json").setHeader("Content-Length", Buffer.byteLength(body));
+  return res.end(body);
 }
 
 async function publicServices(res: VercelResponse, slug?: string) {
@@ -327,19 +327,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return json(res, 401, { error: "Invalid credentials" });
       const secret = process.env.JWT_SECRET || "fallback";
       const token = jwt.sign({ isAdmin: true, email }, secret, { expiresIn: "24h" });
-      res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
-      return json(res, 200, { ok: true, user: { email } });
+      return json(res, 200, { ok: true, token, user: { email } });
     }
     if (action === "logout" && req.method === "POST") {
-      res.setHeader("Set-Cookie", "admin_token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
       return json(res, 200, { ok: true });
     }
     if (action === "me" && req.method === "GET") {
-      const raw = req.headers.cookie;
-      const token = raw?.split(";").map(c => c.trim()).find(c => c.startsWith("admin_token="));
+      const auth = req.headers.authorization || "";
+      const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
       if (!token) return json(res, 200, { authenticated: false });
       try {
-        const p = jwt.verify(token.slice(11), process.env.JWT_SECRET || "") as any;
+        const p = jwt.verify(token, process.env.JWT_SECRET || "") as any;
         return json(res, 200, { authenticated: true, email: p.email });
       } catch { return json(res, 200, { authenticated: false }); }
     }
