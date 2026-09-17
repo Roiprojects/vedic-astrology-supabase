@@ -325,11 +325,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return json(res, 401, { error: "Invalid credentials" });
       const secret = process.env.JWT_SECRET || "fallback";
       const token = jwt.sign({ isAdmin: true, email }, secret, { expiresIn: "24h" });
-      (res as any).cookie("admin_token", token, {
-        httpOnly: true,
-        sameSite: "lax",
-        maxAge: 86400 * 1000,
-      });
+      res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
       return json(res, 200, { ok: true, user: { email } });
     }
     if (action === "logout" && req.method === "POST") {
