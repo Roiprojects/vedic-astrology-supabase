@@ -317,13 +317,13 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     const action = parts[1];
     if (action === "login" && req.method === "POST") {
       const body = (req as any).body || {};
-      supa.from("admin_users").select("*").eq("email", body.email).maybeSingle().then(async ({ data: user, error }) => {
+      const loginId = body.email || body.username || "";
+      supa.from("admin_users").select("*").eq("username", loginId).maybeSingle().then(async ({ data: user, error }) => {
         if (error || !user) return json(res, 401, { error: "Invalid credentials" });
-        // Simple password check - in production use bcrypt
         if (user.password_hash !== body.password) return json(res, 401, { error: "Invalid credentials" });
-        const token = jwt.sign({ isAdmin: true, email: user.email }, process.env.JWT_SECRET || "", { expiresIn: "24h" });
+        const token = jwt.sign({ isAdmin: true, username: user.username }, process.env.JWT_SECRET || "", { expiresIn: "24h" });
         res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
-        json(res, 200, { ok: true, user: { email: user.email, name: user.name } });
+        json(res, 200, { ok: true, user: { username: user.username } });
       });
       return;
     }
