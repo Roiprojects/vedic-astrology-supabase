@@ -30,6 +30,17 @@ function visitorId(): string {
 export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("X-Visitor-Id", visitorId());
+  const needsAuth = path.startsWith("/api/admin") || path.startsWith("/api/auth/me");
+  if (needsAuth) {
+    try {
+      const token = localStorage.getItem("admin_token");
+      if (token && !headers.has("Authorization")) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
+    } catch {
+      // localStorage unavailable (SSR) — skip auth header
+    }
+  }
   return fetch(resolveApiUrl(path), {
     ...init,
     headers,
