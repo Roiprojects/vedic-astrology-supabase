@@ -511,3 +511,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   json(res, 404, { error: "Not found" });
 }
+ 
