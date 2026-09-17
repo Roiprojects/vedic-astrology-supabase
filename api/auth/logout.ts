@@ -1,13 +1,12 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "";
 
 export const config = {
   maxDuration: 10,
 };
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  const secure = process.env.NODE_ENV === "production";
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -18,10 +17,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  res.clearCookie("admin_token", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  });
+  res.setHeader("Set-Cookie", `admin_token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/${secure ? "; Secure" : ""}`);
   return res.json({ ok: true });
 }

@@ -6,11 +6,37 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
 const COOKIE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
+function setCookieHeader(name: string, value: string, maxAge: number, secure: boolean): string {
+  const parts = [
+    `${name}=${value}`,
+    "Max-Age=" + maxAge,
+    "HttpOnly",
+    "SameSite=Lax",
+    "Path=/",
+  ];
+  if (secure) parts.push("Secure");
+  return parts.join("; ");
+}
+
+function deleteCookieHeader(name: string, secure: boolean): string {
+  const parts = [
+    `${name}=`,
+    "Max-Age=0",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Path=/",
+  ];
+  if (secure) parts.push("Secure");
+  return parts.join("; ");
+}
+
 export const config = {
   maxDuration: 10,
 };
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
+  const secure = process.env.NODE_ENV === "production";
+
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -31,11 +57,6 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const token = jwt.sign({ isAdmin: true }, JWT_SECRET, { expiresIn: "7d" });
-  res.cookie("admin_token", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: COOKIE_MAX_AGE,
-    secure: process.env.NODE_ENV === "production",
-  });
+  res.setHeader("Set-Cookie", setCookieHeader("admin_token", token, COOKIE_MAX_AGE, secure));
   return res.json({ ok: true });
 }
