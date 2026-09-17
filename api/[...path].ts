@@ -19,6 +19,65 @@ function json(res: VercelResponse, code: number, data: any) {
   res.status(code).setHeader("Content-Type", "application/json").json(data);
 }
 
+// ─── camelCase → snake_case field mappers ───────────────────────────────────
+
+function mapServiceBody(body: any) {
+  return {
+    slug: body.slug, title: body.title,
+    category_slug: body.categorySlug ?? body.category_slug ?? "",
+    icon: body.icon ?? "🔮", image: body.image ?? null,
+    short_description: body.shortDescription ?? body.short_description ?? "",
+    full_description: body.fullDescription ?? body.full_description ?? "",
+    problem: body.problem ?? "", price: body.price ?? 0,
+    discount_price: body.discountPrice ?? body.discount_price ?? null,
+    duration: body.duration ?? "", gradient: body.gradient ?? "",
+    analysis: body.analysis ?? [], receive: body.receive ?? [],
+    benefits: body.benefits ?? [], remedies: body.remedies ?? [],
+    faqs: body.faqs ?? [], featured: body.featured ?? false,
+    display_order: body.order ?? body.display_order ?? 0, active: body.active ?? true,
+  };
+}
+
+function mapHomamBody(body: any) {
+  return {
+    slug: body.slug, name: body.name, icon: body.icon ?? "🔥", image: body.image ?? null,
+    short_benefit: body.shortBenefit ?? body.short_benefit ?? "",
+    full_description: body.fullDescription ?? body.full_description ?? "",
+    price: body.price ?? 0, discount_price: body.discountPrice ?? body.discount_price ?? null,
+    duration: body.duration ?? "", gradient: body.gradient ?? "",
+    benefits: body.benefits ?? [], suitable_for: body.suitableFor ?? body.suitable_for ?? "",
+    pooja_items: body.poojaItems ?? body.pooja_items ?? "",
+    booking_instructions: body.bookingInstructions ?? body.booking_instructions ?? "",
+    faqs: body.faqs ?? [], featured: body.featured ?? false,
+    display_order: body.order ?? body.display_order ?? 0, active: body.active ?? true,
+  };
+}
+
+function mapAstrologerBody(body: any) {
+  return {
+    slug: body.slug, name: body.name, title: body.title ?? "", image: body.image ?? null,
+    verified: body.verified ?? false, online: body.online ?? false,
+    rating: body.rating ?? 0, reviews: body.reviews ?? 0,
+    experience_years: body.experienceYears ?? body.experience_years ?? 0,
+    languages: body.languages ?? [], specialties: body.specialties ?? [],
+    price_chat: body.priceChat ?? body.price_chat ?? 0,
+    price_call: body.priceCall ?? body.price_call ?? 0,
+    about: body.about ?? "", service_slug: body.serviceSlug ?? body.service_slug ?? "",
+    featured: body.featured ?? false,
+    display_order: body.order ?? body.display_order ?? 0, active: body.active ?? true,
+  };
+}
+
+function mapTestimonialBody(body: any) {
+  return {
+    name: body.name, location: body.location ?? "", rating: body.rating ?? 5,
+    service_type: body.service_type ?? "", text: body.text ?? "",
+    date: body.date ?? new Date().toISOString().split("T")[0],
+    avatar_initial: body.avatar_initial ?? (body.name ? body.name[0] : "G"),
+    featured: body.featured ?? false, display_order: body.display_order ?? 0, active: body.active ?? true,
+  };
+}
+
 // ─── Public read-only handlers ──────────────────────────────────────────────
 
 async function publicServices(res: VercelResponse, slug?: string) {
@@ -84,13 +143,13 @@ function handleAdminServices(req: VercelRequest, res: VercelResponse, slug?: str
     return;
   }
   if (req.method === "POST") {
-    const svc = (req as any).body;
-    supa.from("services").insert(svc).select().single().then(({ data }) => json(res, 201, { service: data }));
+    const mapped = mapServiceBody((req as any).body);
+    supa.from("services").insert(mapped).select().single().then(({ data }) => json(res, 201, { service: data }));
     return;
   }
   if (req.method === "PUT" && slug) {
-    const updates = (req as any).body;
-    supa.from("services").update(updates).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { service: data }));
+    const mapped = mapServiceBody((req as any).body);
+    supa.from("services").update(mapped).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { service: data }));
     return;
   }
   if (req.method === "DELETE" && slug) {
@@ -115,13 +174,13 @@ function handleAdminHomams(req: VercelRequest, res: VercelResponse, slug?: strin
     return;
   }
   if (req.method === "POST") {
-    const item = (req as any).body;
-    supa.from("homams").insert(item).select().single().then(({ data }) => json(res, 201, { homam: data }));
+    const mapped = mapHomamBody((req as any).body);
+    supa.from("homams").insert(mapped).select().single().then(({ data }) => json(res, 201, { homam: data }));
     return;
   }
   if (req.method === "PUT" && slug) {
-    const updates = (req as any).body;
-    supa.from("homams").update(updates).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { homam: data }));
+    const mapped = mapHomamBody((req as any).body);
+    supa.from("homams").update(mapped).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { homam: data }));
     return;
   }
   if (req.method === "DELETE" && slug) {
@@ -139,14 +198,16 @@ function handleAdminAstrologers(req: VercelRequest, res: VercelResponse) {
     return;
   }
   if (req.method === "POST") {
-    const item = (req as any).body;
-    supa.from("astrologers").insert(item).select().single().then(({ data }) => json(res, 201, { astrologer: data }));
+    const mapped = mapAstrologerBody((req as any).body);
+    supa.from("astrologers").insert(mapped).select().single().then(({ data }) => json(res, 201, { astrologer: data }));
     return;
   }
   if (req.method === "PUT") {
-    const { id, ...updates } = (req as any).body;
+    const body = (req as any).body;
+    const mapped = mapAstrologerBody(body);
+    const id = body.id;
     if (!id) return json(res, 400, { error: "ID required" });
-    supa.from("astrologers").update(updates).eq("id", id).select().single().then(({ data }) => json(res, 200, { astrologer: data }));
+    supa.from("astrologers").update(mapped).eq("id", id).select().single().then(({ data }) => json(res, 200, { astrologer: data }));
     return;
   }
   if (req.method === "DELETE") {
@@ -165,14 +226,16 @@ function handleAdminTestimonials(req: VercelRequest, res: VercelResponse) {
     return;
   }
   if (req.method === "POST") {
-    const item = (req as any).body;
-    supa.from("testimonials").insert(item).select().single().then(({ data }) => json(res, 201, { testimonial: data }));
+    const mapped = mapTestimonialBody((req as any).body);
+    supa.from("testimonials").insert(mapped).select().single().then(({ data }) => json(res, 201, { testimonial: data }));
     return;
   }
   if (req.method === "PUT") {
-    const { id, ...updates } = (req as any).body;
+    const body = (req as any).body;
+    const mapped = mapTestimonialBody(body);
+    const id = body.id;
     if (!id) return json(res, 400, { error: "ID required" });
-    supa.from("testimonials").update(updates).eq("id", id).select().single().then(({ data }) => json(res, 200, { testimonial: data }));
+    supa.from("testimonials").update(mapped).eq("id", id).select().single().then(({ data }) => json(res, 200, { testimonial: data }));
     return;
   }
   if (req.method === "DELETE") {
@@ -192,8 +255,9 @@ function handleAdminPages(req: VercelRequest, res: VercelResponse, slug: string)
     return;
   }
   if (req.method === "PUT") {
-    const updates = (req as any).body;
-    supa.from("pages").update(updates).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { page: data }));
+    const content = (req as any).body;
+    const title = content.title || slug;
+    supa.from("pages").upsert({ slug, title, content, active: true }, { onConflict: "slug" }).select().single().then(({ data }) => json(res, 200, { page: data }));
     return;
   }
   json(res, 405, { error: "Method not allowed" });
