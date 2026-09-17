@@ -7,12 +7,12 @@ const supa = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ""
 );
 
-const corsHeaders = (res: VercelResponse) => {
-  const origin = process.env.VITE_SITE_URL || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin === "*" ? "*" : origin);
+const corsHeaders = (res: VercelResponse, req: VercelRequest) => {
+  const origin = (req.headers.origin as string) || process.env.VITE_SITE_URL || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  if (origin !== "*") res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 };
 
 function json(res: VercelResponse, code: number, data: any) {
@@ -336,7 +336,7 @@ function handleAuth(req: VercelRequest, res: VercelResponse) {
 export const config = { maxDuration: 30 };
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  corsHeaders(res);
+  corsHeaders(res, req);
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const pathArr = (req.query as any).path || [];
