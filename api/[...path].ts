@@ -16,8 +16,10 @@ const corsHeaders = (res: VercelResponse) => {
 
 function json(res: VercelResponse, code: number, data: any) {
   const body = JSON.stringify(data);
-  res.status(code).setHeader("Content-Type", "application/json").setHeader("Content-Length", Buffer.byteLength(body));
-  return res.end(body);
+  res.status(code);
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Length", Buffer.byteLength(body));
+  res.end(body);
 }
 
 async function publicServices(res: VercelResponse, slug?: string) {
