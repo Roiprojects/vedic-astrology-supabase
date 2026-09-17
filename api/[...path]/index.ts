@@ -1,7 +1,11 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import jwt from "jsonwebtoken";
-import { supa } from "../_server-shared/supabase";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+const supa: SupabaseClient = createClient(
+  process.env.SUPABASE_URL || "",
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ""
+);
 const JWT_SECRET = process.env.JWT_SECRET || "";
 
 function getCookie(req: VercelRequest, name: string): string | undefined {
@@ -12,9 +16,7 @@ function getCookie(req: VercelRequest, name: string): string | undefined {
   return decodeURIComponent(match.slice(name.length + 1));
 }
 
-function json(res: VercelResponse, data: any, status = 200) {
-  res.status(status).json(data);
-}
+function json(res: VercelResponse, data: any, status = 200) { res.status(status).json(data); }
 
 function corsHeaders(res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -32,14 +34,16 @@ function adminOnly(req: VercelRequest, res: VercelResponse): boolean {
 
 const ALLOWED_PAGES = new Set(["birth-chart-pdf", "chat-with-guruji", "palm-reading"]);
 
+// --- Admin handlers ---
+
 async function handleAdminServices(req: VercelRequest, res: VercelResponse, parts: string[]) {
-  const slugParam = parts[2];
-  if (req.method === "GET" && slugParam) {
-    const { data, error } = await supa.from("services").select("*").eq("slug", slugParam).maybeSingle();
+  const slug = parts[2];
+  if (req.method === "GET" && slug) {
+    const { data, error } = await supa.from("services").select("*").eq("slug", slug).maybeSingle();
     if (error || !data) return json(res, { error: "Not found" }, 404);
     return json(res, { service: data });
   }
-  if (req.method === "PUT" && slugParam) {
+  if (req.method === "PUT" && slug) {
     if (!adminOnly(req, res)) return;
     const body = (req as any).body || {};
     const { data, error } = await supa.from("services").update({
@@ -49,14 +53,14 @@ async function handleAdminServices(req: VercelRequest, res: VercelResponse, part
       discount_price: body.discountPrice ?? null, duration: body.duration, gradient: body.gradient,
       analysis: body.analysis, receive: body.receive, benefits: body.benefits, remedies: body.remedies,
       faqs: body.faqs, featured: body.featured, display_order: body.order, active: body.active,
-    }).eq("slug", slugParam).select("*").maybeSingle();
+    }).eq("slug", slug).select("*").maybeSingle();
     if (error) { if (error.code === "23505") return json(res, { error: `Slug "${body.slug}" already exists.` }, 409); return json(res, { error: "DB error" }, 500); }
     if (!data) return json(res, { error: "Not found" }, 404);
     return json(res, { ok: true, slug: body.slug });
   }
-  if (req.method === "DELETE" && slugParam) {
+  if (req.method === "DELETE" && slug) {
     if (!adminOnly(req, res)) return;
-    const { count } = await supa.from("services").delete({ count: "exact" }).eq("slug", slugParam);
+    const { count } = await supa.from("services").delete({ count: "exact" }).eq("slug", slug);
     if (!count) return json(res, { error: "Not found" }, 404);
     return json(res, { ok: true });
   }
@@ -83,13 +87,13 @@ async function handleAdminServices(req: VercelRequest, res: VercelResponse, part
 }
 
 async function handleAdminHomams(req: VercelRequest, res: VercelResponse, parts: string[]) {
-  const slugParam = parts[2];
-  if (req.method === "GET" && slugParam) {
-    const { data, error } = await supa.from("homams").select("*").eq("slug", slugParam).maybeSingle();
+  const slug = parts[2];
+  if (req.method === "GET" && slug) {
+    const { data, error } = await supa.from("homams").select("*").eq("slug", slug).maybeSingle();
     if (error || !data) return json(res, { error: "Not found" }, 404);
     return json(res, { homam: data });
   }
-  if (req.method === "PUT" && slugParam) {
+  if (req.method === "PUT" && slug) {
     if (!adminOnly(req, res)) return;
     const body = (req as any).body || {};
     const { data, error } = await supa.from("homams").update({
@@ -99,14 +103,14 @@ async function handleAdminHomams(req: VercelRequest, res: VercelResponse, parts:
       gradient: body.gradient, benefits: body.benefits, suitable_for: body.suitableFor,
       pooja_items: body.poojaItems, booking_instructions: body.bookingInstructions,
       faqs: body.faqs, featured: body.featured, display_order: body.order, active: body.active,
-    }).eq("slug", slugParam).select("*").maybeSingle();
+    }).eq("slug", slug).select("*").maybeSingle();
     if (error) { if (error.code === "23505") return json(res, { error: `Slug "${body.slug}" already exists.` }, 409); return json(res, { error: "DB error" }, 500); }
     if (!data) return json(res, { error: "Not found" }, 404);
     return json(res, { ok: true, slug: body.slug });
   }
-  if (req.method === "DELETE" && slugParam) {
+  if (req.method === "DELETE" && slug) {
     if (!adminOnly(req, res)) return;
-    const { count } = await supa.from("homams").delete({ count: "exact" }).eq("slug", slugParam);
+    const { count } = await supa.from("homams").delete({ count: "exact" }).eq("slug", slug);
     if (!count) return json(res, { error: "Not found" }, 404);
     return json(res, { ok: true });
   }
@@ -133,13 +137,13 @@ async function handleAdminHomams(req: VercelRequest, res: VercelResponse, parts:
 }
 
 async function handleAdminAstrologers(req: VercelRequest, res: VercelResponse, parts: string[]) {
-  const slugParam = parts[2];
-  if (req.method === "GET" && slugParam) {
-    const { data, error } = await supa.from("astrologers").select("*").eq("slug", slugParam).maybeSingle();
+  const slug = parts[2];
+  if (req.method === "GET" && slug) {
+    const { data, error } = await supa.from("astrologers").select("*").eq("slug", slug).maybeSingle();
     if (error || !data) return json(res, { error: "Not found" }, 404);
     return json(res, { astrologer: data });
   }
-  if (req.method === "PUT" && slugParam) {
+  if (req.method === "PUT" && slug) {
     if (!adminOnly(req, res)) return;
     const body = (req as any).body || {};
     const { data, error } = await supa.from("astrologers").update({
@@ -150,14 +154,14 @@ async function handleAdminAstrologers(req: VercelRequest, res: VercelResponse, p
       price_chat: body.priceChat ?? 0, price_call: body.priceCall ?? 0,
       about: body.about || "", service_slug: body.serviceSlug ?? null,
       featured: !!body.featured, display_order: body.order ?? 0, active: body.active ?? true,
-    }).eq("slug", slugParam).select("*").maybeSingle();
+    }).eq("slug", slug).select("*").maybeSingle();
     if (error) { if (error.code === "23505") return json(res, { error: `Slug "${body.slug}" already exists.` }, 409); return json(res, { error: "DB error" }, 500); }
     if (!data) return json(res, { error: "Not found" }, 404);
     return json(res, { ok: true });
   }
-  if (req.method === "DELETE" && slugParam) {
+  if (req.method === "DELETE" && slug) {
     if (!adminOnly(req, res)) return;
-    const { count } = await supa.from("astrologers").delete({ count: "exact" }).eq("slug", slugParam);
+    const { count } = await supa.from("astrologers").delete({ count: "exact" }).eq("slug", slug);
     if (!count) return json(res, { error: "Not found" }, 404);
     return json(res, { ok: true });
   }
@@ -181,7 +185,7 @@ async function handleAdminAstrologers(req: VercelRequest, res: VercelResponse, p
     if (error) { if (error.code === "23505") return json(res, { error: `Slug "${body.slug}" already exists.` }, 409); return json(res, { error: "DB error" }, 500); }
     return json(res, { ok: true, astrologer: data });
   }
-  if (slugParam === "seed" && req.method === "POST") {
+  if (slug === "seed" && req.method === "POST") {
     if (!adminOnly(req, res)) return;
     const seed = [
       { slug: "guruji", name: "Guruji", title: "Founder • Vedic Master", image: "/images/rishi-guruji.svg", verified: true, online: true, rating: 4.9, reviews: 1280, experience_years: 25, languages: ["English","Kannada","Hindi","Telugu"], specialties: ["Vedic Astrology","Marriage","Career","Relationship"], price_chat: 2000, price_call: 2500, about: "Authentic Vedic guidance.", service_slug: "janna-jataka-comprehensive-birth-chart", featured: true, display_order: 0, active: true },
@@ -280,6 +284,8 @@ async function handleAdminTestimonials(req: VercelRequest, res: VercelResponse, 
   return json(res, { error: "Method not allowed" }, 405);
 }
 
+// --- Upload handler ---
+
 async function handleUpload(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {
     const { data, error } = await supa.from("media_library").select("*").order("created_at", { ascending: false }).limit(100);
@@ -288,53 +294,41 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
   }
   if (req.method === "POST") {
     if (!adminOnly(req, res)) return;
-    // Simple multipart parsing for file upload
     const contentType = (req.headers["content-type"] as string) || "";
     if (!contentType.includes("multipart/form-data")) return json(res, { error: "Expected multipart/form-data" }, 400);
-
     const chunks: Buffer[] = [];
     for await (const chunk of (req as any)) chunks.push(chunk);
     const buffer = Buffer.concat(chunks);
-
     const boundaryMatch = contentType.match(/boundary=(.+)/);
     if (!boundaryMatch) return json(res, { error: "No boundary found" }, 400);
     const boundary = boundaryMatch[1];
-    const boundaryStr = "--" + boundary;
-    const parts = buffer.toString("binary").split(boundaryStr);
-
+    const parts = buffer.toString("binary").split("--" + boundary);
     let fileBuffer: Buffer | null = null;
-    let filename = "";
-    let mimeType = "";
-
+    let filename = "", mimeType = "";
     for (const part of parts) {
       const headerEnd = part.indexOf("\r\n\r\n");
       if (headerEnd < 0) continue;
       const headers = part.slice(0, headerEnd);
       const body = part.slice(headerEnd + 4);
-      if (headers.includes('name="file"') || headers.includes('name="file"')) {
+      if (headers.includes('name="file"')) {
         const fnMatch = headers.match(/filename="(.+?)"/);
         const typeMatch = headers.match(/Content-Type: (.+)/);
         filename = fnMatch ? fnMatch[1] : "upload";
         mimeType = typeMatch ? typeMatch[1].trim() : "application/octet-stream";
-        const closingIdx = body.lastIndexOf("\r\n" + boundaryStr);
+        const closingIdx = body.lastIndexOf("\r\n--");
         fileBuffer = Buffer.from(closingIdx >= 0 ? body.slice(0, closingIdx) : body, "binary");
       }
     }
-
     if (!fileBuffer || fileBuffer.length === 0) return json(res, { error: "No file uploaded" }, 400);
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowed.includes(mimeType)) return json(res, { error: "Invalid file type" }, 400);
     if (fileBuffer.length > 10 * 1024 * 1024) return json(res, { error: "File too large" }, 400);
-
     const ext = filename.includes(".") ? filename.slice(filename.lastIndexOf(".")) : ".jpg";
     const storagePath = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-
     const { error: uploadError } = await supa.storage.from("uploads").upload(storagePath, fileBuffer, { contentType: mimeType, upsert: true });
     if (uploadError) return json(res, { error: "Upload failed" }, 500);
-
     const { data: urlData } = supa.storage.from("uploads").getPublicUrl(storagePath);
     const publicUrl = urlData.publicUrl;
-
     let dbRow = null;
     try {
       const { data, error: dbError } = await supa.from("media_library").insert({
@@ -343,11 +337,12 @@ async function handleUpload(req: VercelRequest, res: VercelResponse) {
       }).select("*").maybeSingle();
       if (!dbError) dbRow = data;
     } catch {}
-
     return json(res, { ok: true, url: publicUrl, file: dbRow || { url: publicUrl } });
   }
   return json(res, { error: "Method not allowed" }, 405);
 }
+
+// --- Public handlers ---
 
 async function handlePublicServices(req: VercelRequest, res: VercelResponse, parts: string[]) {
   const q = (req.query as any) || {};
@@ -407,11 +402,12 @@ async function handlePublicTestimonials(req: VercelRequest, res: VercelResponse)
   return json(res, { testimonials: data || [] });
 }
 
+// --- Main catch-all handler ---
+
 export const config = { maxDuration: 30 };
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const pathArr = ((req as any).params?.path as string[]) || [];
-  // pathArr[0]="admin", pathArr[1]="services", etc.
 
   if (req.method === "OPTIONS") { corsHeaders(res); return res.status(200).end(); }
 
@@ -447,7 +443,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return json(res, { error: "Not found" }, 404);
   }
 
-  // Other routes
+  // Other routes (delegate to individual files)
   if (pathArr[0] === "chat") return (require("./chat") as any).default(req, res);
   if (pathArr[0] === "palm-reading") return (require("./palm-reading") as any).default(req, res);
   if (pathArr[0] === "enquiry") return (require("./enquiry") as any).default(req, res);
