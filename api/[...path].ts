@@ -328,8 +328,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const token = jwt.sign({ isAdmin: true, username: user.username }, secret, { expiresIn: "24h" });
         res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
         return json(res, 200, { ok: true, user: { username: user.username } });
-      } catch {
-        return json(res, 500, { error: "Auth failed" });
+      } catch (e) {
+        // maybeSingle throws PGRST116 when no row found — treat as invalid credentials
+        const code = (e as any)?.code;
+        if (code === "PGRST116") return json(res, 401, { error: "Invalid credentials" });
+        return json(res, 500, { error: "Auth failed: " + ((e as any)?.message || "unknown") });
       }
     }
     if (action === "logout" && req.method === "POST") {
