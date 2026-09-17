@@ -233,7 +233,7 @@ function handleAuth(req: VercelRequest, res: VercelResponse) {
   const parts = Array.isArray(pathArr)
     ? pathArr.filter(Boolean)
     : String(pathArr).split("/").filter(Boolean);
-  const action = parts[0];
+  const action = parts[1] || parts[0] || "";
 
   if (action === "login" && req.method === "POST") {
     const body = (req as any).body || {};
