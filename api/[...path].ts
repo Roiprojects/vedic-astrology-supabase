@@ -317,16 +317,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const action = parts[1];
     if (action === "login" && req.method === "POST") {
       const body = (req as any).body || {};
-      const loginId = body.email || body.username || "";
-      const pwd = body.password || "";
-      if (!loginId || !pwd) return json(res, 400, { error: "Email and password required" });
-      const { data: user } = await supa.from("admin_users").select("username,password_hash").eq("username", loginId).maybeSingle();
-      if (!user) return json(res, 401, { error: "Invalid credentials" });
-      if (user.password_hash !== pwd) return json(res, 401, { error: "Invalid credentials" });
+      const email = body.email || "";
+      const password = body.password || "";
+      if (!email || !password) return json(res, 400, { error: "Email and password required" });
+      const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
+      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+      if (!ADMIN_EMAIL || !ADMIN_PASSWORD) return json(res, 503, { error: "Admin not configured" });
+      if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return json(res, 401, { error: "Invalid credentials" });
       const secret = process.env.JWT_SECRET || "fallback";
-      const token = jwt.sign({ isAdmin: true, username: user.username }, secret, { expiresIn: "24h" });
+      const token = jwt.sign({ isAdmin: true, email }, secret, { expiresIn: "24h" });
       res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
-      return json(res, 200, { ok: true, user: { username: user.username } });
+      return json(res, 200, { ok: true, user: { email } });
     }
     if (action === "logout" && req.method === "POST") {
       res.setHeader("Set-Cookie", "admin_token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
