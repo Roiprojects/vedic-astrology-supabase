@@ -320,20 +320,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const loginId = body.email || body.username || "";
       const pwd = body.password || "";
       if (!loginId || !pwd) return json(res, 400, { error: "Email and password required" });
-      try {
-        const { data: user, error } = await supa.from("admin_users").select("username,password_hash").eq("username", loginId).maybeSingle();
-        if (error || !user) return json(res, 401, { error: "Invalid credentials" });
-        if (user.password_hash !== pwd) return json(res, 401, { error: "Invalid credentials" });
-        const secret = process.env.JWT_SECRET || "fallback";
-        const token = jwt.sign({ isAdmin: true, username: user.username }, secret, { expiresIn: "24h" });
-        res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
-        return json(res, 200, { ok: true, user: { username: user.username } });
-      } catch (e) {
-        // maybeSingle throws PGRST116 when no row found — treat as invalid credentials
-        const code = (e as any)?.code;
-        if (code === "PGRST116") return json(res, 401, { error: "Invalid credentials" });
-        return json(res, 500, { error: "Auth failed: " + ((e as any)?.message || "unknown") });
-      }
+      const { data: user } = await supa.from("admin_users").select("username,password_hash").eq("username", loginId).maybeSingle();
+      if (!user) return json(res, 401, { error: "Invalid credentials" });
+      if (user.password_hash !== pwd) return json(res, 401, { error: "Invalid credentials" });
+      const secret = process.env.JWT_SECRET || "fallback";
+      const token = jwt.sign({ isAdmin: true, username: user.username }, secret, { expiresIn: "24h" });
+      res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
+      return json(res, 200, { ok: true, user: { username: user.username } });
     }
     if (action === "logout" && req.method === "POST") {
       res.setHeader("Set-Cookie", "admin_token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
