@@ -80,39 +80,41 @@ function mapTestimonialBody(body: any) {
 
 // ─── Public read-only handlers ──────────────────────────────────────────────
 
-async function publicServices(res: VercelRequest, req: VercelRequest) {
-  const q = (req.query as any) || {};
-  const slug = typeof q.slug === "string" ? q.slug : undefined;
+async function publicServices(res: VercelResponse, req: VercelRequest) {
+  const parts = Array.isArray((req.query as any).path) ? (req.query as any).path.filter(Boolean) : String((req.query as any).path || "").split("/").filter(Boolean);
+  const slug = parts[2] || undefined; // /api/public/services/featured?limit=3
+  if (slug === "featured") {
+    const limit = (req.query as any).limit ? Math.min(parseInt((req.query as any).limit, 10) || 0, 50) : 0;
+    let query = supa.from("services").select("*").eq("active", true).eq("featured", true).order("display_order", { ascending: true });
+    if (limit > 0) query = query.limit(limit);
+    const { data } = await query;
+    return json(res, 200, { services: data || [] });
+  }
   if (slug) {
     const { data } = await supa.from("services").select("*").eq("slug", slug).eq("active", true).maybeSingle();
     if (!data) return json(res, 404, { error: "Not found" });
     return json(res, 200, { service: data });
   }
-  const featured = q.featured === "true";
-  const limit = q.limit ? Math.min(parseInt(q.limit, 10) || 0, 50) : 0;
-  let query = supa.from("services").select("*").eq("active", true);
-  if (featured) query = query.eq("featured", true);
-  query = query.order("display_order", { ascending: true });
-  if (limit > 0) query = query.limit(limit);
-  const { data } = await query;
+  const { data } = await supa.from("services").select("*").eq("active", true).order("display_order", { ascending: true });
   return json(res, 200, { services: data || [] });
 }
 
-async function publicHomams(res: VercelRequest, req: VercelRequest) {
-  const q = (req.query as any) || {};
-  const slug = typeof q.slug === "string" ? q.slug : undefined;
+async function publicHomams(res: VercelResponse, req: VercelRequest) {
+  const parts = Array.isArray((req.query as any).path) ? (req.query as any).path.filter(Boolean) : String((req.query as any).path || "").split("/").filter(Boolean);
+  const slug = parts[2] || undefined; // /api/public/homams/featured?limit=3
+  if (slug === "featured") {
+    const limit = (req.query as any).limit ? Math.min(parseInt((req.query as any).limit, 10) || 0, 50) : 0;
+    let query = supa.from("homams").select("*").eq("active", true).eq("featured", true).order("display_order", { ascending: true });
+    if (limit > 0) query = query.limit(limit);
+    const { data } = await query;
+    return json(res, 200, { homams: data || [] });
+  }
   if (slug) {
     const { data } = await supa.from("homams").select("*").eq("slug", slug).eq("active", true).maybeSingle();
     if (!data) return json(res, 404, { error: "Not found" });
     return json(res, 200, { homam: data });
   }
-  const featured = q.featured === "true";
-  const limit = q.limit ? Math.min(parseInt(q.limit, 10) || 0, 50) : 0;
-  let query = supa.from("homams").select("*").eq("active", true);
-  if (featured) query = query.eq("featured", true);
-  query = query.order("display_order", { ascending: true });
-  if (limit > 0) query = query.limit(limit);
-  const { data } = await query;
+  const { data } = await supa.from("homams").select("*").eq("active", true).order("display_order", { ascending: true });
   return json(res, 200, { homams: data || [] });
 }
 
@@ -370,7 +372,6 @@ function handleChat(req: VercelRequest, res: VercelResponse) {
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (!hasGemini && !hasOpenAI) return json(res, 503, { error: "The AI service is not configured." });
 
-  // Chat handler is async — send response after AI call
   (async () => {
     try {
       let reply: string;
@@ -385,19 +386,21 @@ function handleChat(req: VercelRequest, res: VercelResponse) {
             ? await callOpenAI(openaiModel, history)
             : "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
         }
-      } else if (hasOpenAI) {
+      } else {
         try {
           reply = await callOpenAI(openaiModel, history);
         } catch {
           reply = "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
         }
-      } else {
-        reply = "The AI service is not configured. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
       }
 
-      json(res, 200, { reply });
+      if (!res.writableEnded) {
+        json(res, 200, { reply });
+      }
     } catch {
-      json(res, 500, { error: "Something went wrong. Please try again." });
+      if (!res.writableEnded) {
+        json(res, 500, { error: "Something went wrong. Please try again." });
+      }
     }
   })();
 }
