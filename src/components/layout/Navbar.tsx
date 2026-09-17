@@ -97,8 +97,7 @@ function ServicesMegaMenu() {
       {open && (
         <div
           ref={menuRef}
-          className="invisible absolute left-1/2 top-full w-[720px] max-w-[calc(100vw-2rem)] -translate-x-1/2 translate-y-2 pt-3 opacity-0 transition-all duration-200"
-          style={{ visibility: "visible", transform: "translateX(-50%) translateY(0)", opacity: 1 }}
+          className="absolute left-0 top-full w-[720px] max-w-[calc(100vw-2rem)] pt-3 opacity-100"
           onMouseEnter={() => {
             if (leaveTimer.current) clearTimeout(leaveTimer.current);
           }}
