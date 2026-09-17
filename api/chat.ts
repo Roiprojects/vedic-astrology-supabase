@@ -104,21 +104,25 @@ async function openAIComplete(
 
 // ─── Route handler ─────────────────────────────────────────────────────────────
 
+export const config = {
+  maxDuration: 30,
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   console.log("[chat] invoked, method:", req.method);
   console.log("[chat] GEMINI_API_KEY set:", !!process.env.GEMINI_API_KEY);
   console.log("[chat] OPENAI_API_KEY set:", !!process.env.OPENAI_API_KEY);
 
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   // CORS
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+
+  if (req.method !== "POST") {
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   let body: {

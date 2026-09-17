@@ -32,3 +32,5 @@ apk/
 
 # Android
 android/
+
+.vercel
