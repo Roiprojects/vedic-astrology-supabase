@@ -122,7 +122,8 @@ export function AiChatWidget() {
         return;
       }
 
-      const text = await res.text();
+      const data = await res.json();
+      const text = data.reply ?? "The assistant is unavailable right now.";
       setMessages((prev) => {
         const next = [...prev];
         next[next.length - 1] = { role: "assistant", content: text };

@@ -243,6 +243,9 @@ export function TempleHome() {
             <div className="grid gap-5 md:grid-cols-3">
               {services.map((service) => <ServiceCard key={service.slug} service={service} />)}
             </div>
+            <div className="mt-8 text-center">
+              <Button href="/services" variant="gold" size="lg">View all services</Button>
+            </div>
           </div>
         </Container>
       </section>
@@ -259,6 +262,9 @@ export function TempleHome() {
             </div>
             <div className="grid gap-5 md:grid-cols-3">
               {homams.map((homam) => <HomamCard key={homam.slug} homam={homam} />)}
+            </div>
+            <div className="mt-8 text-center">
+              <Button href="/homams" variant="gold" size="lg">View all homams</Button>
             </div>
           </div>
         </Container>
