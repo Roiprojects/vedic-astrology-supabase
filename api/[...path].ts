@@ -80,23 +80,39 @@ function mapTestimonialBody(body: any) {
 
 // ─── Public read-only handlers ──────────────────────────────────────────────
 
-async function publicServices(res: VercelResponse, slug?: string) {
+async function publicServices(res: VercelRequest, req: VercelRequest) {
+  const q = (req.query as any) || {};
+  const slug = typeof q.slug === "string" ? q.slug : undefined;
   if (slug) {
     const { data } = await supa.from("services").select("*").eq("slug", slug).eq("active", true).maybeSingle();
     if (!data) return json(res, 404, { error: "Not found" });
     return json(res, 200, { service: data });
   }
-  const { data } = await supa.from("services").select("*").eq("active", true).order("display_order", { ascending: true });
+  const featured = q.featured === "true";
+  const limit = q.limit ? Math.min(parseInt(q.limit, 10) || 0, 50) : 0;
+  let query = supa.from("services").select("*").eq("active", true);
+  if (featured) query = query.eq("featured", true);
+  query = query.order("display_order", { ascending: true });
+  if (limit > 0) query = query.limit(limit);
+  const { data } = await query;
   return json(res, 200, { services: data || [] });
 }
 
-async function publicHomams(res: VercelResponse, slug?: string) {
+async function publicHomams(res: VercelRequest, req: VercelRequest) {
+  const q = (req.query as any) || {};
+  const slug = typeof q.slug === "string" ? q.slug : undefined;
   if (slug) {
     const { data } = await supa.from("homams").select("*").eq("slug", slug).eq("active", true).maybeSingle();
     if (!data) return json(res, 404, { error: "Not found" });
     return json(res, 200, { homam: data });
   }
-  const { data } = await supa.from("homams").select("*").eq("active", true).order("display_order", { ascending: true });
+  const featured = q.featured === "true";
+  const limit = q.limit ? Math.min(parseInt(q.limit, 10) || 0, 50) : 0;
+  let query = supa.from("homams").select("*").eq("active", true);
+  if (featured) query = query.eq("featured", true);
+  query = query.order("display_order", { ascending: true });
+  if (limit > 0) query = query.limit(limit);
+  const { data } = await query;
   return json(res, 200, { homams: data || [] });
 }
 
@@ -443,8 +459,8 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   // /api/public/services, /api/public/homams, etc.
   if (parts[0] === "public" && req.method === "GET") {
     const [group, resource, slug] = [parts[1], parts[2], parts[3]];
-    if (group === "services") return publicServices(res, slug);
-    if (group === "homams") return publicHomams(res, slug);
+    if (group === "services") return publicServices(res, req);
+    if (group === "homams") return publicHomams(res, req);
     if (group === "astrologers") return publicAstrologers(res);
     if (group === "testimonials") return publicTestimonials(res);
     if (group === "pages") return publicPages(res, slug);
