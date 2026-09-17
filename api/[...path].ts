@@ -7,10 +7,11 @@ const supa = createClient(
 );
 
 const corsHeaders = (res: VercelResponse) => {
-  res.setHeader("Access-Control-Allow-Origin", "https://vedic-supa-d5tn4027s-s06719751-7859s-projects.vercel.app");
+  const origin = process.env.VITE_SITE_URL || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (origin !== "*") res.setHeader("Access-Control-Allow-Credentials", "true");
 };
 
 function json(res: VercelResponse, code: number, data: any) {
@@ -324,7 +325,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return json(res, 401, { error: "Invalid credentials" });
       const secret = process.env.JWT_SECRET || "fallback";
       const token = jwt.sign({ isAdmin: true, email }, secret, { expiresIn: "24h" });
-      res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
+      (res as any).cookie("admin_token", token, {
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 86400 * 1000,
+      });
       return json(res, 200, { ok: true, user: { email } });
     }
     if (action === "logout" && req.method === "POST") {
