@@ -32,9 +32,8 @@ function ServicesMegaMenu() {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLLIElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Click outside to close
+  // Close on outside click
   useEffect(() => {
     if (!open) return;
     const handleClick = (e: MouseEvent) => {
@@ -46,64 +45,39 @@ function ServicesMegaMenu() {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-    };
-  }, [open]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+    // Delay listener so the opening click doesn't immediately close it
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClick);
+    }, 100);
     document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
   }, [open]);
 
   return (
-    <li
-      ref={triggerRef}
-      className="relative"
-      onMouseEnter={() => {
-        if (leaveTimer.current) clearTimeout(leaveTimer.current);
-        setOpen(true);
-      }}
-      onMouseLeave={() => {
-        leaveTimer.current = setTimeout(() => setOpen(false), 200);
-      }}
-    >
-      <NavLink
-        to="/services"
-        className={({ isActive: active }) =>
-          cn(
-            "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-            (active || false)
-              ? "text-gold-light"
-              : "text-muted hover:text-ink"
-          )
-        }
-        onClick={(e) => {
-          // Don't navigate; let the mega menu handle clicks
-          e.preventDefault();
-          setOpen((o) => !o);
-        }}
+    <li ref={triggerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+          open ? "text-gold-light" : "text-muted hover:text-ink"
+        )}
       >
         Services
         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
-      </NavLink>
+      </button>
 
       {open && (
         <div
           ref={menuRef}
           className="absolute left-0 top-full w-[720px] max-w-[calc(100vw-2rem)] pt-3 opacity-100"
-          onMouseEnter={() => {
-            if (leaveTimer.current) clearTimeout(leaveTimer.current);
-          }}
-          onMouseLeave={() => {
-            leaveTimer.current = setTimeout(() => setOpen(false), 200);
-          }}
         >
           <div className="glass-card overflow-hidden rounded-2xl shadow-xl">
             <div className="grid grid-cols-2 divide-x divide-gold/15">
