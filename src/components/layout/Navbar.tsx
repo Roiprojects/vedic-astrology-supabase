@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation, NavLink } from "react-router-dom";
 import { ChevronDown, Menu } from "lucide-react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { Button } from "@/components/ui/Button";
@@ -29,89 +29,168 @@ const OTHER_SERVICES = [
 ];
 
 function ServicesMegaMenu() {
-  return (
-    <div className="invisible absolute left-1/2 top-full w-[720px] max-w-[calc(100vw-2rem)] -translate-x-1/2 translate-y-2 pt-3 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
-      <div className="glass-card overflow-hidden rounded-2xl shadow-xl">
-        <div className="grid grid-cols-2 divide-x divide-gold/15">
-          {/* Left — Astrology Consultations */}
-          <div className="p-4">
-            <p className="mb-3 px-2 text-[0.6rem] font-bold uppercase tracking-[0.22em] text-gold">
-              Astrology Consultations
-            </p>
-            <div className="space-y-0.5">
-              {CONSULTATION_ITEMS.map((item) => (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-start gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-[#b67a1b]/[0.06]",
-                      isActive && "text-gold-light"
-                    )
-                  }
-                >
-                  <span className="mt-0.5 text-base leading-none">{item.icon}</span>
-                  <span>
-                    <span className="block text-[0.8rem] font-medium leading-snug text-ink">
-                      {item.label}
-                    </span>
-                    <span className="block text-[0.68rem] leading-snug text-faint">
-                      {item.desc}
-                    </span>
-                  </span>
-                </NavLink>
-              ))}
-            </div>
-            <div className="mt-3 border-t border-gold/15 pt-3">
-              <NavLink
-                to="/services"
-                className="block rounded-xl px-3 py-2 text-[0.75rem] font-semibold text-gold-light hover:bg-[#b67a1b]/[0.06]"
-              >
-                View all services →
-              </NavLink>
-            </div>
-          </div>
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLLIElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-          {/* Right — Other Services */}
-          <div className="p-4">
-            <p className="mb-3 px-2 text-[0.6rem] font-bold uppercase tracking-[0.22em] text-gold">
-              Other Services
-            </p>
-            <div className="space-y-0.5">
-              {OTHER_SERVICES.map((item) => (
-                <NavLink
-                  key={item.href}
-                  to={item.href}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-start gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-[#b67a1b]/[0.06]",
-                      isActive && "text-gold-light"
-                    )
-                  }
-                >
-                  <span className="mt-0.5 text-base leading-none">{item.icon}</span>
-                  <span>
-                    <span className="block text-[0.8rem] font-medium leading-snug text-ink">
-                      {item.label}
-                    </span>
-                    <span className="block text-[0.68rem] leading-snug text-faint">
-                      {item.desc}
-                    </span>
-                  </span>
-                </NavLink>
-              ))}
+  // Click outside to close
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        menuRef.current && !menuRef.current.contains(target) &&
+        triggerRef.current && !triggerRef.current.contains(target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [open]);
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open]);
+
+  return (
+    <li
+      ref={triggerRef}
+      className="relative"
+      onMouseEnter={() => {
+        if (leaveTimer.current) clearTimeout(leaveTimer.current);
+        setOpen(true);
+      }}
+      onMouseLeave={() => {
+        leaveTimer.current = setTimeout(() => setOpen(false), 200);
+      }}
+    >
+      <NavLink
+        to="/services"
+        className={({ isActive: active }) =>
+          cn(
+            "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+            (active || false)
+              ? "text-gold-light"
+              : "text-muted hover:text-ink"
+          )
+        }
+        onClick={(e) => {
+          // Don't navigate; let the mega menu handle clicks
+          e.preventDefault();
+          setOpen((o) => !o);
+        }}
+      >
+        Services
+        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+      </NavLink>
+
+      {open && (
+        <div
+          ref={menuRef}
+          className="invisible absolute left-1/2 top-full w-[720px] max-w-[calc(100vw-2rem)] -translate-x-1/2 translate-y-2 pt-3 opacity-0 transition-all duration-200"
+          style={{ visibility: "visible", transform: "translateX(-50%) translateY(0)", opacity: 1 }}
+          onMouseEnter={() => {
+            if (leaveTimer.current) clearTimeout(leaveTimer.current);
+          }}
+          onMouseLeave={() => {
+            leaveTimer.current = setTimeout(() => setOpen(false), 200);
+          }}
+        >
+          <div className="glass-card overflow-hidden rounded-2xl shadow-xl">
+            <div className="grid grid-cols-2 divide-x divide-gold/15">
+              {/* Left — Astrology Consultations */}
+              <div className="p-4">
+                <p className="mb-3 px-2 text-[0.6rem] font-bold uppercase tracking-[0.22em] text-gold">
+                  Astrology Consultations
+                </p>
+                <div className="space-y-0.5">
+                  {CONSULTATION_ITEMS.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-start gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-[#b67a1b]/[0.06]",
+                          isActive && "text-gold-light"
+                        )
+                      }
+                    >
+                      <span className="mt-0.5 text-base leading-none">{item.icon}</span>
+                      <span>
+                        <span className="block text-[0.8rem] font-medium leading-snug text-ink">
+                          {item.label}
+                        </span>
+                        <span className="block text-[0.68rem] leading-snug text-faint">
+                          {item.desc}
+                        </span>
+                      </span>
+                    </NavLink>
+                  ))}
+                </div>
+                <div className="mt-3 border-t border-gold/15 pt-3">
+                  <NavLink
+                    to="/services"
+                    onClick={() => setOpen(false)}
+                    className="block rounded-xl px-3 py-2 text-[0.75rem] font-semibold text-gold-light hover:bg-[#b67a1b]/[0.06]"
+                  >
+                    View all services →
+                  </NavLink>
+                </div>
+              </div>
+
+              {/* Right — Other Services */}
+              <div className="p-4">
+                <p className="mb-3 px-2 text-[0.6rem] font-bold uppercase tracking-[0.22em] text-gold">
+                  Other Services
+                </p>
+                <div className="space-y-0.5">
+                  {OTHER_SERVICES.map((item) => (
+                    <NavLink
+                      key={item.href}
+                      to={item.href}
+                      onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-start gap-2.5 rounded-xl px-3 py-2 transition-colors hover:bg-[#b67a1b]/[0.06]",
+                          isActive && "text-gold-light"
+                        )
+                      }
+                    >
+                      <span className="mt-0.5 text-base leading-none">{item.icon}</span>
+                      <span>
+                        <span className="block text-[0.8rem] font-medium leading-snug text-ink">
+                          {item.label}
+                        </span>
+                        <span className="block text-[0.68rem] leading-snug text-faint">
+                          {item.desc}
+                        </span>
+                      </span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+    </li>
   );
 }
 
 export function Navbar() {
-  const { pathname } = useLocation();
   const [scrolled, setScrolled] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -119,9 +198,6 @@ export function Navbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
     <>
@@ -146,52 +222,63 @@ export function Navbar() {
             <ul className="hidden items-center gap-1 lg:flex">
               {mainNav.map((item) => (
                 <li key={item.href} className="group relative">
-                  <NavLink
-                    to={item.href}
-                    className={({ isActive: active }) =>
-                      cn(
-                        "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                        (active || isActive(item.href))
-                          ? "text-gold-light"
-                          : "text-muted hover:text-ink"
-                      )
-                    }
-                  >
-                    {item.label}
-                    {item.children && (
-                      <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
-                    )}
-                  </NavLink>
-
                   {item.label === "Services" ? (
                     <ServicesMegaMenu />
                   ) : item.children ? (
-                    <div className="invisible absolute left-1/2 top-full w-72 -translate-x-1/2 translate-y-2 pt-3 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
-                      <div className="glass-card overflow-hidden rounded-2xl p-2">
-                        {item.children.map((child) => (
-                          <NavLink
-                            key={child.href}
-                            to={child.href}
-                            className={({ isActive: active }) =>
-                              cn(
-                                "block rounded-xl px-3 py-2.5 transition-colors hover:bg-[#b67a1b]/[0.04]",
-                                active && "text-gold-light"
-                              )
-                            }
-                          >
-                            <span className="block text-sm font-medium text-ink">
-                              {child.label}
-                            </span>
-                            {child.description && (
-                              <span className="mt-0.5 block text-xs text-faint">
-                                {child.description}
+                    <>
+                      <NavLink
+                        to={item.href}
+                        className={({ isActive: active }) =>
+                          cn(
+                            "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                            active ? "text-gold-light" : "text-muted hover:text-ink"
+                          )
+                        }
+                      >
+                        {item.label}
+                        {item.children && (
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
+                        )}
+                      </NavLink>
+                      <div className="invisible absolute left-1/2 top-full w-72 -translate-x-1/2 translate-y-2 pt-3 opacity-0 transition-all duration-200 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100">
+                        <div className="glass-card overflow-hidden rounded-2xl p-2">
+                          {item.children.map((child) => (
+                            <NavLink
+                              key={child.href}
+                              to={child.href}
+                              className={({ isActive: active }) =>
+                                cn(
+                                  "block rounded-xl px-3 py-2.5 transition-colors hover:bg-[#b67a1b]/[0.04]",
+                                  active && "text-gold-light"
+                                )
+                              }
+                            >
+                              <span className="block text-sm font-medium text-ink">
+                                {child.label}
                               </span>
-                            )}
-                          </NavLink>
-                        ))}
+                              {child.description && (
+                                <span className="mt-0.5 block text-xs text-faint">
+                                  {child.description}
+                                </span>
+                              )}
+                            </NavLink>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
+                    </>
+                  ) : (
+                    <NavLink
+                      to={item.href}
+                      className={({ isActive: active }) =>
+                        cn(
+                          "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                          active ? "text-gold-light" : "text-muted hover:text-ink"
+                        )
+                      }
+                    >
+                      {item.label}
+                    </NavLink>
+                  )}
                 </li>
               ))}
             </ul>
@@ -208,7 +295,7 @@ export function Navbar() {
               <button
                 type="button"
                 aria-label="Open menu"
-                onClick={() => setOpen(true)}
+                onClick={() => setMobileOpen(true)}
                 className="grid h-10 w-10 place-items-center rounded-full border border-gold/30 text-gold-light"
               >
                 <Menu className="h-5 w-5" />
@@ -218,7 +305,7 @@ export function Navbar() {
         </div>
       </header>
 
-      <MobileDrawer open={open} onClose={() => setOpen(false)} />
+      <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} />
     </>
   );
 }

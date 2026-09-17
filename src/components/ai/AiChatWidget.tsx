@@ -18,16 +18,75 @@ const SUGGESTIONS = [
   "Which homam helps with career?",
 ];
 
+const STORAGE_KEY = "vedic_ai_chat_messages";
+
+function loadMessages(): Msg[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch { /* ignore */ }
+  return [GREETING];
+}
+
+function saveMessages(messages: Msg[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  } catch { /* ignore */ }
+}
+
 export function AiChatWidget() {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([GREETING]);
+  const [messages, setMessages] = useState<Msg[]>(() => loadMessages());
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, open]);
+
+  // Persist messages to localStorage whenever they change
+  useEffect(() => {
+    saveMessages(messages);
+  }, [messages]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (chatContainerRef.current && !chatContainerRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    // Use setTimeout to avoid the same click that opened the chat closing it
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClick);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [open]);
+
+  // Close on scroll (when chat is open and user scrolls the main page)
+  useEffect(() => {
+    if (!open) return;
+
+    const handleScroll = () => {
+      setOpen(false);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [open]);
 
   async function send(text: string) {
     const content = text.trim();
@@ -114,6 +173,7 @@ export function AiChatWidget() {
       <AnimatePresence>
         {open && (
           <motion.div
+            ref={chatContainerRef}
             initial={{ opacity: 0, y: 24, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.98 }}

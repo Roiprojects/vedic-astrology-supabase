@@ -15,7 +15,44 @@ import { apiFetch } from "@/lib/api";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const SESSION_MS = 5 * 60 * 1000; // 5 minutes per service topic
+const SESSION_MS = 5 * 60 * 1000;
+
+const SESSION_KEY = "vedic_ai_service_state";
+
+type PersistedState = {
+  messages: Msg[];
+  activeService: string | null;
+  sessionStart: number;
+  sessionEnded: boolean;
+};
+
+function loadState(): PersistedState | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PersistedState;
+    if (!parsed || !Array.isArray(parsed.messages)) return null;
+    if (parsed.sessionEnded) {
+      sessionStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveState(state: PersistedState) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
+  } catch { /* ignore */ }
+}
+
+function clearState() {
+  try {
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch { /* ignore */ }
+}
 
 function buildGreeting(serviceTitle: string | null): string {
   if (serviceTitle) {
@@ -41,42 +78,65 @@ function buildSuggestions(serviceTitle: string | null): string[] {
 
 export function ServiceAiChat() {
   const [open, setOpen] = useState(false);
-  const [activeService, setActiveService] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Msg[]>([
-    { role: "assistant", content: buildGreeting(null) },
-  ]);
+  const initialService = useRef<string | null>(null);
+  const savedState = useRef<PersistedState | null>(loadState());
+  const [activeService, setActiveService] = useState<string | null>(() => savedState.current?.activeService ?? null);
+  const [messages, setMessages] = useState<Msg[]>(() => savedState.current?.messages ?? [{ role: "assistant", content: buildGreeting(null) }]);
+  const [sessionSecondsLeft, setSessionSecondsLeft] = useState(() => {
+    if (savedState.current?.sessionEnded) return 0;
+    if (savedState.current) {
+      const elapsed = Date.now() - savedState.current.sessionStart;
+      return Math.max(0, Math.ceil((SESSION_MS - elapsed) / 1000));
+    }
+    return SESSION_MS / 1000;
+  });
+  const [sessionEnded, setSessionEnded] = useState(() => savedState.current?.sessionEnded ?? false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [sessionSecondsLeft, setSessionSecondsLeft] = useState(SESSION_MS / 1000);
-  const [sessionEnded, setSessionEnded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sessionStartRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, open, sessionEnded]);
-
-  // Reset conversation when the topic changes
-  useEffect(() => {
-    if (open) {
-      setMessages([{ role: "assistant", content: buildGreeting(activeService) }]);
-      setInput("");
-      setSessionEnded(false);
-      setSessionSecondsLeft(SESSION_MS / 1000);
+  // Compute sessionStart from persisted state or now
+  if (sessionStartRef.current === null && open && !sessionEnded) {
+    if (savedState.current) {
+      // Derive the original start time from remaining seconds
+      const elapsed = SESSION_MS - sessionSecondsLeft * 1000;
+      sessionStartRef.current = Date.now() - elapsed;
+    } else {
       sessionStartRef.current = Date.now();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeService, open]);
+  }
+
+  // Persist state whenever relevant values change (only when open)
+  useEffect(() => {
+    if (!open) return;
+    saveState({
+      messages,
+      activeService,
+      sessionStart: sessionStartRef.current ?? Date.now(),
+      sessionEnded,
+    });
+  }, [messages, activeService, sessionEnded, open]);
+
+  // Reset conversation when the activeService changes — NOT when open toggles
+  // so messages survive close/reopen. Only `activeService` in deps.
+  useEffect(() => {
+    setMessages([{ role: "assistant", content: buildGreeting(activeService) }]);
+    setInput("");
+    setSessionEnded(false);
+    setSessionSecondsLeft(SESSION_MS / 1000);
+    sessionStartRef.current = Date.now();
+    savedState.current = null;
+  }, [activeService]);
 
   // Opened from anywhere via window.dispatchEvent(new CustomEvent("open-guruji-ai", { detail: { serviceTitle } }))
   useEffect(() => {
     const openChat = (event: Event) => {
       const customEvent = event as CustomEvent<{ serviceTitle?: string }>;
       const title = customEvent.detail?.serviceTitle;
+      initialService.current = title ?? null;
       setActiveService(title ?? null);
       setOpen(true);
     };
@@ -85,9 +145,9 @@ export function ServiceAiChat() {
     return () => window.removeEventListener("open-guruji-ai", openChat);
   }, []);
 
-  // 5-minute per-topic session timer
+  // Session timer
   useEffect(() => {
-    if (!open) return;
+    if (!open || sessionEnded) return;
 
     const start = sessionStartRef.current ?? Date.now();
     sessionStartRef.current = start;
@@ -104,6 +164,39 @@ export function ServiceAiChat() {
     return () => {
       if (tickRef.current) clearInterval(tickRef.current);
     };
+  }, [open, sessionEnded]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (chatContainerRef.current && !chatContainerRef.current.contains(target)) {
+        setOpen(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClick);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClick);
+    };
+  }, [open]);
+
+  // Close on scroll
+  useEffect(() => {
+    if (!open) return;
+
+    const handleScroll = () => {
+      setOpen(false);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [open]);
 
   async function send(value: string) {
@@ -190,6 +283,7 @@ export function ServiceAiChat() {
       <AnimatePresence>
         {open && (
           <motion.section
+            ref={chatContainerRef}
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
