@@ -254,7 +254,7 @@ function handleChat(req: VercelRequest, res: VercelResponse) {
 
 export const config = { maxDuration: 30 };
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   corsHeaders(res);
   if (req.method === "OPTIONS") return res.status(200).end();
 
@@ -320,17 +320,17 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       const loginId = body.email || body.username || "";
       const pwd = body.password || "";
       if (!loginId || !pwd) return json(res, 400, { error: "Email and password required" });
-      supa.from("admin_users").select("username,password_hash").eq("username", loginId).maybeSingle().then(({ data: user, error }) => {
-        if (error) return json(res, 500, { error: "DB error" });
-        if (!user || user.password_hash !== pwd) return json(res, 401, { error: "Invalid credentials" });
+      try {
+        const { data: user, error } = await supa.from("admin_users").select("username,password_hash").eq("username", loginId).maybeSingle();
+        if (error || !user) return json(res, 401, { error: "Invalid credentials" });
+        if (user.password_hash !== pwd) return json(res, 401, { error: "Invalid credentials" });
         const secret = process.env.JWT_SECRET || "fallback";
         const token = jwt.sign({ isAdmin: true, username: user.username }, secret, { expiresIn: "24h" });
         res.setHeader("Set-Cookie", `admin_token=${token}; HttpOnly; Path=/; Max-Age=86400; SameSite=Lax`);
-        json(res, 200, { ok: true, user: { username: user.username } });
-      }).catch((err) => {
+        return json(res, 200, { ok: true, user: { username: user.username } });
+      } catch {
         return json(res, 500, { error: "Auth failed" });
-      });
-      return;
+      }
     }
     if (action === "logout" && req.method === "POST") {
       res.setHeader("Set-Cookie", "admin_token=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax");
