@@ -226,7 +226,8 @@ export function ServiceAiChat() {
         throw new Error(data?.error || "The assistant is unavailable right now.");
       }
 
-      const text = await response.text();
+      const data = await response.json();
+      const text = data.reply ?? "The assistant is unavailable right now.";
       setMessages((current) => {
         const next = [...current];
         next[next.length - 1] = {
