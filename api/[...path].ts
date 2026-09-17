@@ -71,7 +71,7 @@ function isAdmin(req: VercelRequest, res: VercelResponse): boolean {
   return true;
 }
 
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 
 function paged(res: VercelResponse, q: any, table: string) {
   supa.from(table).select("*").order("display_order", { ascending: true }).then(({ data, error }) => {
@@ -201,7 +201,7 @@ function handleAdminTestimonials(req: VercelRequest, res: VercelResponse) {
   json(res, 405, { error: "Method not allowed" });
 }
 
-function handleAdminPages(req: VercelRequest, res: VercelResponse, slug: string) {
+async function handleAdminPages(req: VercelRequest, res: VercelResponse, slug: string) {
   const body = (req as any).body || {};
   if (req.method === "GET") {
     const { data } = await supa.from("pages").select("*").eq("slug", slug).maybeSingle();
