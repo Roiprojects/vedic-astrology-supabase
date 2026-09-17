@@ -1,5 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
 
 const supa = createClient(
   process.env.SUPABASE_URL || "",
@@ -8,19 +9,17 @@ const supa = createClient(
 
 const corsHeaders = (res: VercelResponse) => {
   const origin = process.env.VITE_SITE_URL || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Origin", origin === "*" ? "*" : origin);
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (origin !== "*") res.setHeader("Access-Control-Allow-Credentials", "true");
 };
 
 function json(res: VercelResponse, code: number, data: any) {
-  const body = JSON.stringify(data);
-  res.status(code);
-  res.setHeader("Content-Type", "application/json");
-  res.setHeader("Content-Length", Buffer.byteLength(body));
-  res.end(body);
+  res.status(code).setHeader("Content-Type", "application/json").json(data);
 }
+
+// ─── Public read-only handlers ──────────────────────────────────────────────
 
 async function publicServices(res: VercelResponse, slug?: string) {
   if (slug) {
@@ -42,13 +41,8 @@ async function publicHomams(res: VercelResponse, slug?: string) {
   return json(res, 200, { homams: data || [] });
 }
 
-async function publicAstrologers(res: VercelResponse, slug?: string) {
-  if (slug) {
-    const { data } = await supa.from("astrologers").select("*").eq("slug", slug).maybeSingle();
-    if (!data) return json(res, 404, { error: "Not found" });
-    return json(res, 200, { astrologer: data });
-  }
-  const { data } = await supa.from("astrologers").select("*").order("display_order", { ascending: true });
+async function publicAstrologers(res: VercelResponse) {
+  const { data } = await supa.from("astrologers").select("*").eq("active", true).order("display_order", { ascending: true });
   return json(res, 200, { astrologers: data || [] });
 }
 
@@ -57,181 +51,161 @@ async function publicTestimonials(res: VercelResponse) {
   return json(res, 200, { testimonials: data || [] });
 }
 
-async function publicPages(res: VercelResponse, slug: string) {
-  const allowed = ["birth-chart-pdf", "chat-with-guruji", "palm-reading"];
-  if (!allowed.includes(slug)) return json(res, 404, { page: slug, content: {} });
+async function publicPages(res: VercelResponse, slug?: string) {
+  if (!slug) return json(res, 400, { error: "Slug required" });
   const { data } = await supa.from("pages").select("*").eq("slug", slug).maybeSingle();
-  return json(res, 200, { page: slug, content: (data as any)?.content || {} });
+  if (!data) return json(res, 404, { error: "Not found" });
+  return json(res, 200, { page: data });
 }
 
-// ─── Admin CRUD handlers ───────────────────────────────────────────────────
+// ─── Admin CRUD handlers ────────────────────────────────────────────────────
 
 function isAdmin(req: VercelRequest, res: VercelResponse): boolean {
-  const raw = req.headers.cookie;
-  const token = raw?.split(";").map(c => c.trim()).find(c => c.startsWith("admin_token="));
+  const auth = req.headers.authorization || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
   if (!token) { json(res, 401, { error: "Unauthorized" }); return false; }
-  try { (jwt.verify(token.slice(11), process.env.JWT_SECRET || "") as any); }
+  try { jwt.verify(token, process.env.JWT_SECRET || ""); }
   catch { json(res, 401, { error: "Invalid session" }); return false; }
   return true;
 }
 
-import * as jwt from "jsonwebtoken";
-
-function paged(res: VercelResponse, q: any, table: string) {
-  supa.from(table).select("*").order("display_order", { ascending: true }).then(({ data, error }) => {
-    if (error) return json(res, 500, { error: "DB error" });
-    json(res, 200, { [table]: data || [] });
-  });
-}
-function bySlug(res: VercelResponse, table: string, slug: string, key: string) {
-  supa.from(table).select("*").eq("slug", slug).maybeSingle().then(({ data, error }) => {
-    if (error || !data) return json(res, 404, { error: "Not found" });
-    json(res, 200, { [key]: data });
-  });
-}
-function delSlug(res: VercelResponse, table: string, slug: string) {
-  supa.from(table).delete({ count: "exact" }).eq("slug", slug).then(({ error, count }) => {
-    if (error) return json(res, 500, { error: "DB error" });
-    if (!count) return json(res, 404, { error: "Not found" });
-    json(res, 200, { ok: true });
-  });
-}
-
 function handleAdminServices(req: VercelRequest, res: VercelResponse, slug?: string) {
-  const body = (req as any).body || {};
   if (req.method === "GET") {
-    if (slug) return bySlug(res, "services", slug, "service");
-    return paged(res, {}, "services");
+    if (slug) {
+      supa.from("services").select("*").eq("slug", slug).maybeSingle().then(({ data }) => {
+        if (!data) return json(res, 404, { error: "Not found" });
+        json(res, 200, { service: data });
+      });
+      return;
+    }
+    supa.from("services").select("*").order("display_order", { ascending: true }).then(({ data }) => {
+      json(res, 200, { services: data || [] });
+    });
+    return;
   }
   if (req.method === "POST") {
-    supa.from("services").insert({ slug: body.slug, title: body.title, category_slug: body.categorySlug || "astrology-consultations", icon: body.icon, image: body.image ?? null, short_description: body.shortDescription, full_description: body.fullDescription, problem: body.problem, price: body.price, discount_price: body.discountPrice ?? null, duration: body.duration, gradient: body.gradient, analysis: body.analysis, receive: body.receive, benefits: body.benefits, remedies: body.remedies, faqs: body.faqs, featured: body.featured, display_order: body.order, active: body.active }).select("*").maybeSingle().then(({ error }) => {
-      if (error?.code === "23505") return json(res, 409, { error: `Slug "${body.slug}" already exists.` });
-      if (error) return json(res, 500, { error: "DB error" });
-      json(res, 200, { ok: true, slug: body.slug });
-    });
+    const svc = (req as any).body;
+    supa.from("services").insert(svc).select().single().then(({ data }) => json(res, 201, { service: data }));
     return;
   }
   if (req.method === "PUT" && slug) {
-    supa.from("services").update({ slug: body.slug, title: body.title, category_slug: body.categorySlug || "astrology-consultations", icon: body.icon, image: body.image ?? null, short_description: body.shortDescription, full_description: body.fullDescription, problem: body.problem, price: body.price, discount_price: body.discountPrice ?? null, duration: body.duration, gradient: body.gradient, analysis: body.analysis, receive: body.receive, benefits: body.benefits, remedies: body.remedies, faqs: body.faqs, featured: body.featured, display_order: body.order, active: body.active }).eq("slug", slug).select("*").maybeSingle().then(({ error, data }) => {
-      if (error?.code === "23505") return json(res, 409, { error: `Slug "${body.slug}" already exists.` });
-      if (error) return json(res, 500, { error: "DB error" });
-      if (!data) return json(res, 404, { error: "Not found" });
-      json(res, 200, { ok: true, slug: body.slug });
-    });
+    const updates = (req as any).body;
+    supa.from("services").update(updates).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { service: data }));
     return;
   }
-  if (req.method === "DELETE" && slug) return delSlug(res, "services", slug);
+  if (req.method === "DELETE" && slug) {
+    supa.from("services").delete().eq("slug", slug).then(() => json(res, 200, { ok: true }));
+    return;
+  }
   json(res, 405, { error: "Method not allowed" });
 }
 
 function handleAdminHomams(req: VercelRequest, res: VercelResponse, slug?: string) {
-  const body = (req as any).body || {};
   if (req.method === "GET") {
-    if (slug) return bySlug(res, "homams", slug, "homam");
-    return paged(res, {}, "homams");
+    if (slug) {
+      supa.from("homams").select("*").eq("slug", slug).maybeSingle().then(({ data }) => {
+        if (!data) return json(res, 404, { error: "Not found" });
+        json(res, 200, { homam: data });
+      });
+      return;
+    }
+    supa.from("homams").select("*").order("display_order", { ascending: true }).then(({ data }) => {
+      json(res, 200, { homams: data || [] });
+    });
+    return;
   }
   if (req.method === "POST") {
-    supa.from("homams").insert({ slug: body.slug, name: body.name, icon: body.icon, image: body.image ?? null, short_benefit: body.shortBenefit, full_description: body.fullDescription, price: body.price, discount_price: body.discountPrice ?? null, duration: body.duration, gradient: body.gradient, benefits: body.benefits, suitable_for: body.suitableFor, pooja_items: body.poojaItems, booking_instructions: body.bookingInstructions, faqs: body.faqs, featured: body.featured, display_order: body.order, active: body.active }).select("*").maybeSingle().then(({ error }) => {
-      if (error?.code === "23505") return json(res, 409, { error: `Slug "${body.slug}" already exists.` });
-      if (error) return json(res, 500, { error: "DB error" });
-      json(res, 200, { ok: true, slug: body.slug });
-    });
+    const item = (req as any).body;
+    supa.from("homams").insert(item).select().single().then(({ data }) => json(res, 201, { homam: data }));
     return;
   }
   if (req.method === "PUT" && slug) {
-    supa.from("homams").update({ slug: body.slug, name: body.name, icon: body.icon, image: body.image ?? null, short_benefit: body.shortBenefit, full_description: body.fullDescription, price: body.price, discount_price: body.discountPrice ?? null, duration: body.duration, gradient: body.gradient, benefits: body.benefits, suitable_for: body.suitableFor, pooja_items: body.poojaItems, booking_instructions: body.bookingInstructions, faqs: body.faqs, featured: body.featured, display_order: body.order, active: body.active }).eq("slug", slug).select("*").maybeSingle().then(({ error, data }) => {
-      if (error?.code === "23505") return json(res, 409, { error: `Slug "${body.slug}" already exists.` });
-      if (error) return json(res, 500, { error: "DB error" });
-      if (!data) return json(res, 404, { error: "Not found" });
-      json(res, 200, { ok: true, slug: body.slug });
-    });
+    const updates = (req as any).body;
+    supa.from("homams").update(updates).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { homam: data }));
     return;
   }
-  if (req.method === "DELETE" && slug) return delSlug(res, "homams", slug);
+  if (req.method === "DELETE" && slug) {
+    supa.from("homams").delete().eq("slug", slug).then(() => json(res, 200, { ok: true }));
+    return;
+  }
   json(res, 405, { error: "Method not allowed" });
 }
 
-function handleAdminAstrologers(req: VercelRequest, res: VercelResponse, slug?: string) {
-  const body = (req as any).body || {};
+function handleAdminAstrologers(req: VercelRequest, res: VercelResponse) {
   if (req.method === "GET") {
-    if (slug) return bySlug(res, "astrologers", slug, "astrologer");
-    return paged(res, {}, "astrologers");
+    supa.from("astrologers").select("*").order("display_order", { ascending: true }).then(({ data }) => {
+      json(res, 200, { astrologers: data || [] });
+    });
+    return;
   }
   if (req.method === "POST") {
-    supa.from("astrologers").insert({ slug: body.slug, name: body.name, title: body.title, image: body.image ?? null, bio: body.bio, specialization: body.specialization, experience: body.experience, rating: body.rating, languages: body.languages, availability: body.availability, display_order: body.order, active: body.active }).select("*").maybeSingle().then(({ error }) => {
-      if (error?.code === "23505") return json(res, 409, { error: `Slug "${body.slug}" already exists.` });
-      if (error) return json(res, 500, { error: "DB error" });
-      json(res, 200, { ok: true, slug: body.slug });
-    });
+    const item = (req as any).body;
+    supa.from("astrologers").insert(item).select().single().then(({ data }) => json(res, 201, { astrologer: data }));
     return;
   }
-  if (req.method === "PUT" && slug) {
-    supa.from("astrologers").update({ slug: body.slug, name: body.name, title: body.title, image: body.image ?? null, bio: body.bio, specialization: body.specialization, experience: body.experience, rating: body.rating, languages: body.languages, availability: body.availability, display_order: body.order, active: body.active }).eq("slug", slug).select("*").maybeSingle().then(({ error, data }) => {
-      if (error?.code === "23505") return json(res, 409, { error: `Slug "${body.slug}" already exists.` });
-      if (error) return json(res, 500, { error: "DB error" });
-      if (!data) return json(res, 404, { error: "Not found" });
-      json(res, 200, { ok: true, slug: body.slug });
-    });
+  if (req.method === "PUT") {
+    const { id, ...updates } = (req as any).body;
+    if (!id) return json(res, 400, { error: "ID required" });
+    supa.from("astrologers").update(updates).eq("id", id).select().single().then(({ data }) => json(res, 200, { astrologer: data }));
     return;
   }
-  if (req.method === "DELETE" && slug) return delSlug(res, "astrologers", slug);
+  if (req.method === "DELETE") {
+    const { id } = (req as any).body;
+    supa.from("astrologers").delete().eq("id", id).then(() => json(res, 200, { ok: true }));
+    return;
+  }
   json(res, 405, { error: "Method not allowed" });
 }
 
 function handleAdminTestimonials(req: VercelRequest, res: VercelResponse) {
-  const body = (req as any).body || {};
-  if (req.method === "GET") return paged(res, {}, "testimonials");
-  if (req.method === "POST") {
-    supa.from("testimonials").insert({ name: body.name, location: body.location, rating: body.rating, text: body.text, service_type: body.serviceType, image: body.image ?? null, featured: body.featured, display_order: body.order, active: body.active }).select("*").maybeSingle().then(({ error }) => {
-      if (error) return json(res, 500, { error: "DB error" });
-      json(res, 200, { ok: true });
+  if (req.method === "GET") {
+    supa.from("testimonials").select("*").order("display_order", { ascending: true }).then(({ data }) => {
+      json(res, 200, { testimonials: data || [] });
     });
+    return;
+  }
+  if (req.method === "POST") {
+    const item = (req as any).body;
+    supa.from("testimonials").insert(item).select().single().then(({ data }) => json(res, 201, { testimonial: data }));
     return;
   }
   if (req.method === "PUT") {
-    supa.from("testimonials").update({ name: body.name, location: body.location, rating: body.rating, text: body.text, service_type: body.serviceType, image: body.image ?? null, featured: body.featured, display_order: body.order, active: body.active }).then(({ error }) => {
-      if (error) return json(res, 500, { error: "DB error" });
-      json(res, 200, { ok: true });
-    });
+    const { id, ...updates } = (req as any).body;
+    if (!id) return json(res, 400, { error: "ID required" });
+    supa.from("testimonials").update(updates).eq("id", id).select().single().then(({ data }) => json(res, 200, { testimonial: data }));
     return;
   }
   if (req.method === "DELETE") {
-    supa.from("testimonials").delete({ count: "exact" }).then(({ error, count }) => {
-      if (error) return json(res, 500, { error: "DB error" });
-      json(res, 200, { ok: true });
-    });
+    const { id } = (req as any).body;
+    supa.from("testimonials").delete().eq("id", id).then(() => json(res, 200, { ok: true }));
     return;
   }
   json(res, 405, { error: "Method not allowed" });
 }
 
-async function handleAdminPages(req: VercelRequest, res: VercelResponse, slug: string) {
-  const body = (req as any).body || {};
+function handleAdminPages(req: VercelRequest, res: VercelResponse, slug: string) {
   if (req.method === "GET") {
-    const { data } = await supa.from("pages").select("*").eq("slug", slug).maybeSingle();
-    return json(res, 200, { page: slug, content: (data as any)?.content || {} });
+    supa.from("pages").select("*").eq("slug", slug).maybeSingle().then(({ data }) => {
+      if (!data) return json(res, 404, { error: "Not found" });
+      json(res, 200, { page: data });
+    });
+    return;
   }
   if (req.method === "PUT") {
-    supa.from("pages").upsert({ slug, content: body.content }).then(({ error }) => {
-      if (error) return json(res, 500, { error: "DB error" });
-      json(res, 200, { ok: true });
-    });
+    const updates = (req as any).body;
+    supa.from("pages").update(updates).eq("slug", slug).select().single().then(({ data }) => json(res, 200, { page: data }));
     return;
   }
   json(res, 405, { error: "Method not allowed" });
 }
 
 function handleAdminUpload(req: VercelRequest, res: VercelResponse) {
-  // Forward multipart upload to Supabase Storage
-  if (req.method !== "POST") return json(res, 405, { error: "Method not allowed" });
-  // Handled inline - parse multipart and upload
-  json(res, 200, { ok: true });
+  json(res, 501, { error: "Upload not implemented" });
 }
 
 // ─── Chat handler ───────────────────────────────────────────────────────────
 
 function handleChat(req: VercelRequest, res: VercelResponse) {
-  // Same logic as current chat.ts
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -245,20 +219,59 @@ function handleChat(req: VercelRequest, res: VercelResponse) {
   const clean = messages.filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0).slice(-12);
   if (clean.length === 0 || clean[clean.length - 1].role !== "user") return json(res, 400, { error: "A user message is required." });
 
-  // Non-streaming fallback
   const hasGemini = !!process.env.GEMINI_API_KEY;
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (!hasGemini && !hasOpenAI) return json(res, 503, { error: "The AI service is not configured." });
 
-  // Return a simple response - streaming is complex in merged handler
   json(res, 200, { reply: "Thank you for reaching out. Please speak directly with Guruji at +91 98861 00565 for personalized guidance." });
+}
+
+// ─── Auth handler ───────────────────────────────────────────────────────────
+
+function handleAuth(req: VercelRequest, res: VercelResponse) {
+  const pathArr = (req.query as any).path || [];
+  const parts = Array.isArray(pathArr)
+    ? pathArr.filter(Boolean)
+    : String(pathArr).split("/").filter(Boolean);
+  const action = parts[0];
+
+  if (action === "login" && req.method === "POST") {
+    const body = (req as any).body || {};
+    const email = body.email || "";
+    const password = body.password || "";
+    if (!email || !password) return json(res, 400, { error: "Email and password required" });
+    const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
+    if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return json(res, 401, { error: "Invalid credentials" });
+    const secret = process.env.JWT_SECRET || "fallback";
+    const token = jwt.sign({ isAdmin: true, email }, secret, { expiresIn: "24h" });
+    return json(res, 200, { ok: true, token, user: { email } });
+  }
+
+  if (action === "logout" && req.method === "POST") {
+    return json(res, 200, { ok: true });
+  }
+
+  if (action === "me" && req.method === "GET") {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    if (!token) return json(res, 200, { authenticated: false });
+    try {
+      const p = jwt.verify(token, process.env.JWT_SECRET || "") as any;
+      return json(res, 200, { authenticated: true, email: p.email });
+    } catch {
+      return json(res, 200, { authenticated: false });
+    }
+  }
+
+  return json(res, 404, { error: "Not found" });
 }
 
 // ─── Main handler ───────────────────────────────────────────────────────────
 
 export const config = { maxDuration: 30 };
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: VercelRequest, res: VercelResponse) {
   corsHeaders(res);
   if (req.method === "OPTIONS") return res.status(200).end();
 
@@ -272,7 +285,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const [group, resource, slug] = [parts[1], parts[2], parts[3]];
     if (group === "services") return publicServices(res, slug);
     if (group === "homams") return publicHomams(res, slug);
-    if (group === "astrologers") return publicAstrologers(res, slug);
+    if (group === "astrologers") return publicAstrologers(res);
     if (group === "testimonials") return publicTestimonials(res);
     if (group === "pages") return publicPages(res, slug);
     return json(res, 404, { error: "Not found" });
@@ -280,74 +293,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // /api/admin/services, /api/admin/homams, etc.
   if (parts[0] === "admin") {
-    const group = parts[1];  // services, homams, etc.
-    const slug = parts[2];   // slug or id from path
+    const group = parts[1];
+    const slug = parts[2];
     if (!isAdmin(req, res)) return;
     if (group === "services") return handleAdminServices(req, res, slug);
     if (group === "homams") return handleAdminHomams(req, res, slug);
-    if (group === "astrologers") return handleAdminAstrologers(req, res, slug);
+    if (group === "astrologers") return handleAdminAstrologers(req, res);
     if (group === "testimonials") return handleAdminTestimonials(req, res);
     if (group === "pages" && slug) return handleAdminPages(req, res, slug);
     if (group === "upload") return handleAdminUpload(req, res);
-    if (group === "enquiries") {
-      // enquiries handler
-      const body = (req as any).body || {};
-      if (req.method === "GET") {
-        const status = (req.query as any)?.status as string | undefined;
-        let query = supa.from("enquiries").select("*");
-        if (status && status !== "all") query = query.eq("status", status);
-        query.order("created_at", { ascending: false }).then(({ data, error }) => {
-          if (error) return json(res, 500, { error: "DB error" });
-          json(res, 200, { enquiries: data || [] });
-        });
-        return;
-      }
-      if (req.method === "PUT" && slug) {
-        const { status: newStatus } = (req as any).body || {};
-        supa.from("enquiries").update({ status: newStatus }).eq("id", Number(slug)).then(({ error }) => {
-          if (error) return json(res, 500, { error: "DB error" });
-          json(res, 200, { ok: true });
-        });
-        return;
-      }
-      json(res, 405, { error: "Method not allowed" });
-      return;
-    }
     return json(res, 404, { error: "Not found" });
   }
 
   // /api/auth/login, /api/auth/logout, /api/auth/me
-  if (parts[0] === "auth") {
-    const action = parts[1];
-    if (action === "login" && req.method === "POST") {
-      const body = (req as any).body || {};
-      const email = body.email || "";
-      const password = body.password || "";
-      if (!email || !password) return json(res, 400, { error: "Email and password required" });
-      const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "";
-      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "";
-      if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) return json(res, 401, { error: "Invalid credentials" });
-      const secret = process.env.JWT_SECRET || "fallback";
-      const token = jwt.sign({ isAdmin: true, email }, secret, { expiresIn: "24h" });
-      return json(res, 200, { ok: true, token, user: { email } });
-    }
-    if (action === "logout" && req.method === "POST") {
-      return json(res, 200, { ok: true });
-    }
-    if (action === "me" && req.method === "GET") {
-      const auth = req.headers.authorization || "";
-      const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-      if (!token) return json(res, 200, { authenticated: false });
-      try {
-        const p = jwt.verify(token, process.env.JWT_SECRET || "") as any;
-        return json(res, 200, { authenticated: true, email: p.email });
-      } catch { return json(res, 200, { authenticated: false }); }
-    }
-    return json(res, 404, { error: "Not found" });
-  }
+  if (parts[0] === "auth") return handleAuth(req, res);
 
   // /api/chat
   if (parts[0] === "chat") return handleChat(req, res);
+
+  // /api/enquiries, /api/contact, /api/orders
+  if (parts[0] === "enquiries" && req.method === "POST") {
+    const enquiry = (req as any).body || {};
+    supa.from("enquiries").insert(enquiry).select().single().then(({ data }) => json(res, 201, { enquiry: data }));
+    return;
+  }
+  if (parts[0] === "contact" && req.method === "POST") {
+    const contact = (req as any).body || {};
+    supa.from("contacts").insert(contact).select().single().then(({ data }) => json(res, 201, { contact: data }));
+    return;
+  }
+  if (parts[0] === "orders" && req.method === "POST") {
+    const order = (req as any).body || {};
+    supa.from("orders").insert(order).select().single().then(({ data }) => json(res, 201, { order: data }));
+    return;
+  }
 
   json(res, 404, { error: "Not found" });
 }
