@@ -269,6 +269,62 @@ function handleAdminUpload(req: VercelRequest, res: VercelResponse) {
 
 // ─── Chat handler ───────────────────────────────────────────────────────────
 
+const ASTROLOGY_SYSTEM_PROMPT = `You are Guruji Assistant, a knowledgeable Vedic astrology guide. You answer questions about: Vedic astrology, birth charts (kundli/jataka), rashi (moon sign), doshas (Manglik, Pitra, Rahu-Ketu), homams and rituals, gemstones, planetary periods (dashas), nakshatras, matchmaking (jataka/kundali matching), career guidance through astrology, health astrology, remedies (upayas), and spiritual practices from Vedic tradition.
+
+Rules:
+- ONLY answer questions related to Vedic astrology, spirituality, and the above topics.
+- If asked about anything unrelated (sports, politics, technology, entertainment, etc.), politely redirect: "I can only guide you on Vedic astrology topics. Please ask me about your birth chart, doshas, homams, remedies, or any astrology-related question."
+- Be warm, respectful, and use traditional Indian greeting style where appropriate. Use "Namaste" occasionally.
+- Keep responses concise (2-4 short paragraphs max) since this is a chat interface.
+- Give practical, actionable guidance when possible — mention specific mantras, simple remedies, or next steps.
+- Never make guarantees about future events. Use phrases like "may help", "traditionally believed to", "often indicates".
+- Do NOT provide medical advice. For health concerns, suggest consulting a doctor and mention relevant astrological remedies as complementary guidance only.
+- If you don't know something specific, admit it honestly and suggest consulting Guruji directly for personalized analysis.
+- The user may mention a specific service they are interested in. Keep your answers relevant to that service when they do.`;
+
+async function callGemini(model: string, messages: any[]): Promise<string> {
+  const contents = [
+    { role: "user", parts: [{ text: ASTROLOGY_SYSTEM_PROMPT }] },
+    ...messages.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    })),
+  ];
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 512 } }),
+    }
+  );
+  if (!resp.ok) throw new Error(`Gemini error: ${resp.status}`);
+  const data = await resp.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "I couldn't generate a response. Please try again.";
+}
+
+async function callOpenAI(model: string, messages: any[]): Promise<string> {
+  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: ASTROLOGY_SYSTEM_PROMPT },
+        ...messages,
+      ],
+      temperature: 0.7,
+      max_tokens: 512,
+    }),
+  });
+  if (!resp.ok) throw new Error(`OpenAI error: ${resp.status}`);
+  const data = await resp.json();
+  return data?.choices?.[0]?.message?.content?.trim() || "I couldn't generate a response. Please try again.";
+}
+
 function handleChat(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
@@ -283,11 +339,51 @@ function handleChat(req: VercelRequest, res: VercelResponse) {
   const clean = messages.filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0).slice(-12);
   if (clean.length === 0 || clean[clean.length - 1].role !== "user") return json(res, 400, { error: "A user message is required." });
 
+  // If a service context is provided, prepend it as a system hint
+  const history = serviceTitle
+    ? [
+        ...clean.slice(0, -1),
+        {
+          role: "user",
+          content: `[Context: The user is asking about the service "${serviceTitle}". Answer accordingly.]\n${clean[clean.length - 1].content}`,
+        },
+      ]
+    : clean;
+
   const hasGemini = !!process.env.GEMINI_API_KEY;
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (!hasGemini && !hasOpenAI) return json(res, 503, { error: "The AI service is not configured." });
 
-  json(res, 200, { reply: "Thank you for reaching out. Please speak directly with Guruji at +91 98861 00565 for personalized guidance." });
+  // Chat handler is async — send response after AI call
+  (async () => {
+    try {
+      let reply: string;
+      const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+      const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+      if (hasGemini) {
+        try {
+          reply = await callGemini(geminiModel, history);
+        } catch {
+          reply = hasOpenAI
+            ? await callOpenAI(openaiModel, history)
+            : "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
+        }
+      } else if (hasOpenAI) {
+        try {
+          reply = await callOpenAI(openaiModel, history);
+        } catch {
+          reply = "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
+        }
+      } else {
+        reply = "The AI service is not configured. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
+      }
+
+      json(res, 200, { reply });
+    } catch {
+      json(res, 500, { error: "Something went wrong. Please try again." });
+    }
+  })();
 }
 
 // ─── Auth handler ───────────────────────────────────────────────────────────

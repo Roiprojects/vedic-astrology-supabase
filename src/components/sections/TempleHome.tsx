@@ -232,19 +232,16 @@ export function TempleHome() {
             ))}
           </div>
 
-          <div className="mt-24 grid items-end gap-8 lg:grid-cols-[.7fr_1.3fr]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#a8501a]">One-to-one guidance</p>
-              <span aria-hidden className="mt-4 block h-px w-16 bg-gradient-to-r from-[#b67a1b]/80 to-transparent" />
-              <h2 className="mt-4 max-w-[11ch] font-serif text-[clamp(2.7rem,5vw,5rem)] leading-[0.95] tracking-[-0.035em]">Clarity for life&apos;s important questions</h2>
-              <p className="mt-5 max-w-md leading-7 text-[#684a37]">Each consultation studies the relevant planets, houses, doshas, and practical spiritual remedies—not a generic horoscope.</p>
-              <Button href="/services/astrology-consultations" variant="gold" size="lg" className="mt-7">View all services</Button>
+          <div className="mt-24">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#a8501a]">One-to-one guidance</p>
+                <h2 className="mt-3 font-serif text-[clamp(1.8rem,3vw,2.8rem)] leading-tight text-[#35180d]">Clarity for life's important questions</h2>
+              </div>
+              <Button href="/services/astrology-consultations" variant="gold" size="md">View all services</Button>
             </div>
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {services.map((service) => <ServiceCard key={service.slug} service={service} />)}
-            </div>
-            <div className="mt-8 text-center">
-              <Button href="/services" variant="gold" size="lg">View all services</Button>
             </div>
           </div>
         </Container>
@@ -252,19 +249,16 @@ export function TempleHome() {
 
       <section className={`${styles.night} relative overflow-hidden py-24 text-[#fff0c7] sm:py-32`}>
         <Container>
-          <div className="grid gap-14 lg:grid-cols-[.78fr_1.22fr]">
-            <div className="lg:sticky lg:top-28 lg:self-start">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#e8b952]">Purify · Align · Transform</p>
-              <span aria-hidden className="mt-4 block h-px w-16 bg-gradient-to-r from-[#e8b952]/80 to-transparent" />
-              <h2 className="mt-4 max-w-[10ch] font-serif text-[clamp(3rem,5vw,5.7rem)] leading-[0.94] tracking-[-0.04em]">Sacred homams for divine blessings</h2>
-              <p className="mt-6 max-w-md leading-7 text-[#eadcbf]/72">Authentic Vedic fire rituals for prosperity, peace, protection, health, and new beginnings.</p>
-              <Button href="/homams" size="lg" className="mt-8 bg-[#cf641e] text-white hover:bg-[#e17827]">View all homas</Button>
+          <div className="mt-20">
+            <div className="mb-8 flex items-end justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#e8b952]">Purify · Align · Transform</p>
+                <h2 className="mt-3 font-serif text-[clamp(1.8rem,3vw,2.8rem)] leading-tight text-[#fff0c7]">Sacred homams for divine blessings</h2>
+              </div>
+              <Button href="/homams" variant="gold" size="md">View all homams</Button>
             </div>
-            <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {homams.map((homam) => <HomamCard key={homam.slug} homam={homam} />)}
-            </div>
-            <div className="mt-8 text-center">
-              <Button href="/homams" variant="gold" size="lg">View all homams</Button>
             </div>
           </div>
         </Container>
