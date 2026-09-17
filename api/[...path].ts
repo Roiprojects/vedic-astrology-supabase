@@ -7,9 +7,10 @@ const supa = createClient(
 );
 
 const corsHeaders = (res: VercelResponse) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", "https://vedic-supa-d5tn4027s-s06719751-7859s-projects.vercel.app");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 };
 
 function json(res: VercelResponse, code: number, data: any) {
