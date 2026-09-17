@@ -343,7 +343,7 @@ async function callOpenAI(model: string, messages: any[]): Promise<string> {
   return data?.choices?.[0]?.message?.content?.trim() || "I couldn't generate a response. Please try again.";
 }
 
-function handleChat(req: VercelRequest, res: VercelResponse) {
+async function handleChat(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -357,7 +357,6 @@ function handleChat(req: VercelRequest, res: VercelResponse) {
   const clean = messages.filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim().length > 0).slice(-12);
   if (clean.length === 0 || clean[clean.length - 1].role !== "user") return json(res, 400, { error: "A user message is required." });
 
-  // If a service context is provided, prepend it as a system hint
   const history = serviceTitle
     ? [
         ...clean.slice(0, -1),
@@ -372,37 +371,37 @@ function handleChat(req: VercelRequest, res: VercelResponse) {
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (!hasGemini && !hasOpenAI) return json(res, 503, { error: "The AI service is not configured." });
 
-  (async () => {
-    try {
-      let reply: string;
-      const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-      const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  try {
+    let reply: string;
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
-      if (hasGemini) {
-        try {
-          reply = await callGemini(geminiModel, history);
-        } catch {
-          reply = hasOpenAI
-            ? await callOpenAI(openaiModel, history)
-            : "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
-        }
-      } else {
-        try {
-          reply = await callOpenAI(openaiModel, history);
-        } catch {
-          reply = "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
-        }
+    if (hasGemini) {
+      try {
+        reply = await callGemini(geminiModel, history);
+      } catch {
+        reply = hasOpenAI
+          ? await callOpenAI(openaiModel, history)
+          : "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
       }
-
-      if (!res.writableEnded) {
-        json(res, 200, { reply });
+    } else if (hasOpenAI) {
+      try {
+        reply = await callOpenAI(openaiModel, history);
+      } catch {
+        reply = "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
       }
-    } catch {
-      if (!res.writableEnded) {
-        json(res, 500, { error: "Something went wrong. Please try again." });
-      }
+    } else {
+      reply = "The AI service is not configured. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
     }
-  })();
+
+    if (!res.writableEnded) {
+      json(res, 200, { reply });
+    }
+  } catch {
+    if (!res.writableEnded) {
+      json(res, 500, { error: "Something went wrong. Please try again." });
+    }
+  }
 }
 
 // ─── Auth handler ───────────────────────────────────────────────────────────
@@ -450,7 +449,7 @@ function handleAuth(req: VercelRequest, res: VercelResponse) {
 
 export const config = { maxDuration: 30 };
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   corsHeaders(res, req);
   if (req.method === "OPTIONS") return res.status(200).end();
 
@@ -487,8 +486,11 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   // /api/auth/login, /api/auth/logout, /api/auth/me
   if (parts[0] === "auth") return handleAuth(req, res);
 
-  // /api/chat
-  if (parts[0] === "chat") return handleChat(req, res);
+  // /api/chat — needs async for AI calls
+  if (parts[0] === "chat") {
+    await handleChat(req, res);
+    return;
+  }
 
   // /api/enquiries, /api/contact, /api/orders
   if (parts[0] === "enquiries" && req.method === "POST") {
