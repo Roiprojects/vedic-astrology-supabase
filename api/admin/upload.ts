@@ -32,7 +32,7 @@ const corsHeaders = (res: VercelResponse) => {
 
 export const config = { maxDuration: 30 };
 
-function parseMultipart(req: VercelRequest): Promise<{ fileBuffer: Buffer; filename: string; mimeType: string }> {
+async function parseMultipart(req: VercelRequest): Promise<{ fileBuffer: Buffer; filename: string; mimeType: string }> {
   const contentType = req.headers["content-type"] as string;
   const boundaryMatch = contentType.match(/boundary=(.+)/);
   if (!boundaryMatch) throw new Error("No boundary");
