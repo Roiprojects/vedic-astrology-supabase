@@ -152,6 +152,12 @@ async function openAIStream(
 // ─── Route handler ─────────────────────────────────────────────────────────────
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  console.log("[chat] invoked, method:", req.method);
+  console.log("[chat] GEMINI_API_KEY set:", !!process.env.GEMINI_API_KEY);
+  console.log("[chat] OPENAI_API_KEY set:", !!process.env.OPENAI_API_KEY);
+  console.log("[chat] GEMINI_MODEL:", process.env.GEMINI_MODEL);
+  console.log("[chat] OPENAI_MODEL:", process.env.OPENAI_MODEL);
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -199,29 +205,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const hasKey = geminiKey || openAIKey;
   if (!hasKey) {
+    console.error("[chat] no API keys configured");
     return res.status(503).json({ error: "The AI service is not configured." });
   }
+  console.log("[chat] Gemini key:", !!geminiKey, "OpenAI key:", !!openAIKey, "model:", geminiModel, "/", openaiModel);
 
   // Stream the response — try Gemini first, fall back to OpenAI
   try {
     if (geminiKey) {
       try {
+        console.log("[chat] trying Gemini...");
         await geminiStream(systemPrompt, clean, (text) => res.write(text));
+        console.log("[chat] Gemini stream complete");
         return res.end();
       } catch (geminiErr) {
-        console.error("[chat] Gemini failed:", geminiErr);
+        console.error("[chat] Gemini failed:", geminiErr instanceof Error ? geminiErr.message : geminiErr);
         // Fall through to OpenAI
       }
     }
 
     if (openAIKey) {
-      await openAIStream(systemPrompt, clean, (text) => res.write(text));
-      return res.end();
+      try {
+        console.log("[chat] trying OpenAI...");
+        await openAIStream(systemPrompt, clean, (text) => res.write(text));
+        console.log("[chat] OpenAI stream complete");
+        return res.end();
+      } catch (openaiErr) {
+        console.error("[chat] OpenAI failed:", openaiErr instanceof Error ? openaiErr.message : openaiErr);
+      }
     }
 
+    console.error("[chat] all providers failed");
     return res.status(503).json({ error: "The AI service is not configured." });
   } catch (err) {
-    console.error("[chat] stream error:", err);
+    console.error("[chat] stream error:", err instanceof Error ? err.message : err);
     if (!res.headersSent) {
       return res.status(500).json({ error: "The assistant is unavailable right now. Please try again." });
     }
