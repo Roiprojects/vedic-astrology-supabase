@@ -1,9 +1,6 @@
 # Dependencies
 node_modules/
 
-# Build output (rebuilt on deploy)
-dist/
-
 # Environment — never commit secrets
 .env
 .env.local

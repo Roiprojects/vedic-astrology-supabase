@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#fff8e7"/>
+      <stop offset="100%" stop-color="#f0d5a0"/>
+    </radialGradient>
+    <radialGradient id="skinGrad" cx="48%" cy="35%" r="60%">
+      <stop offset="0%" stop-color="#d4936a"/>
+      <stop offset="100%" stop-color="#b0703f"/>
+    </radialGradient>
+    <radialGradient id="robeGrad" cx="50%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#f5a623"/>
+      <stop offset="100%" stop-color="#c97d10"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#7a3b00" flood-opacity="0.18"/>
+    </filter>
+    <clipPath id="circle">
+      <circle cx="200" cy="200" r="198"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="200" fill="url(#bg)"/>
+
+  <!-- Subtle mandala pattern in background -->
+  <g opacity="0.08" clip-path="url(#circle)">
+    <circle cx="200" cy="200" r="170" fill="none" stroke="#b45309" stroke-width="1"/>
+    <circle cx="200" cy="200" r="140" fill="none" stroke="#b45309" stroke-width="0.8"/>
+    <circle cx="200" cy="200" r="110" fill="none" stroke="#b45309" stroke-width="0.6"/>
+    <line x1="30" y1="200" x2="370" y2="200" stroke="#b45309" stroke-width="0.5"/>
+    <line x1="200" y1="30" x2="200" y2="370" stroke="#b45309" stroke-width="0.5"/>
+    <line x1="80" y1="80" x2="320" y2="320" stroke="#b45309" stroke-width="0.5"/>
+    <line x1="320" y1="80" x2="80" y2="320" stroke="#b45309" stroke-width="0.5"/>
+  </g>
+
+  <!-- Body / robe -->
+  <ellipse cx="200" cy="370" rx="110" ry="80" fill="url(#robeGrad)" clip-path="url(#circle)"/>
+  <path d="M 95 310 Q 120 280 200 270 Q 280 280 305 310 L 320 400 L 80 400 Z" fill="#e09020" clip-path="url(#circle)"/>
+  <!-- Robe folds -->
+  <path d="M 155 295 Q 165 320 160 360" fill="none" stroke="#c07010" stroke-width="1.5" opacity="0.5"/>
+  <path d="M 245 295 Q 235 320 240 360" fill="none" stroke="#c07010" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Neck -->
+  <ellipse cx="200" cy="275" rx="26" ry="16" fill="url(#skinGrad)"/>
+
+  <!-- Head -->
+  <ellipse cx="200" cy="190" rx="68" ry="78" fill="url(#skinGrad)" filter="url(#shadow)"/>
+
+  <!-- Hair on head (dark) -->
+  <path d="M 133 175 Q 135 120 200 112 Q 265 120 267 175 Q 255 140 200 136 Q 145 140 133 175 Z" fill="#2a1500"/>
+  <!-- Hair waves -->
+  <path d="M 136 160 Q 148 135 168 128" fill="none" stroke="#1a0d00" stroke-width="2" opacity="0.6"/>
+  <path d="M 264 160 Q 252 135 232 128" fill="none" stroke="#1a0d00" stroke-width="2" opacity="0.6"/>
+
+  <!-- Tilak (mark on forehead) -->
+  <ellipse cx="200" cy="158" rx="5" ry="8" fill="#cc3300" opacity="0.85"/>
+  <line x1="200" y1="150" x2="200" y2="158" stroke="#cc3300" stroke-width="2" opacity="0.7"/>
+
+  <!-- Eyebrows -->
+  <path d="M 165 185 Q 180 179 193 182" fill="none" stroke="#2a1500" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 207 182 Q 220 179 235 185" fill="none" stroke="#2a1500" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Eyes -->
+  <ellipse cx="180" cy="198" rx="11" ry="8" fill="white"/>
+  <ellipse cx="220" cy="198" rx="11" ry="8" fill="white"/>
+  <circle cx="181" cy="199" r="5.5" fill="#3a2000"/>
+  <circle cx="221" cy="199" r="5.5" fill="#3a2000"/>
+  <circle cx="183" cy="197" r="1.5" fill="white"/>
+  <circle cx="223" cy="197" r="1.5" fill="white"/>
+
+  <!-- Nose -->
+  <path d="M 200 210 Q 192 224 190 230 Q 200 234 210 230 Q 208 224 200 210 Z" fill="#a86040" opacity="0.6"/>
+
+  <!-- Mouth — gentle smile -->
+  <path d="M 185 248 Q 200 258 215 248" fill="none" stroke="#8a4020" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Long beard — white/grey for elder sage -->
+  <path d="M 148 240 Q 138 265 135 295 Q 150 320 200 330 Q 250 320 265 295 Q 262 265 252 240 Q 240 280 200 290 Q 160 280 148 240 Z" fill="#e8e0d0"/>
+  <!-- Beard texture lines -->
+  <path d="M 165 248 Q 160 275 162 305" fill="none" stroke="#c0b8a8" stroke-width="1" opacity="0.7"/>
+  <path d="M 180 252 Q 178 280 180 315" fill="none" stroke="#c0b8a8" stroke-width="1" opacity="0.7"/>
+  <path d="M 200 255 Q 200 285 200 318" fill="none" stroke="#c0b8a8" stroke-width="1" opacity="0.7"/>
+  <path d="M 220 252 Q 222 280 220 315" fill="none" stroke="#c0b8a8" stroke-width="1" opacity="0.7"/>
+  <path d="M 235 248 Q 240 275 238 305" fill="none" stroke="#c0b8a8" stroke-width="1" opacity="0.7"/>
+
+  <!-- Moustache -->
+  <path d="M 186 243 Q 193 247 200 245 Q 207 247 214 243" fill="none" stroke="#c0b8a0" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Ears -->
+  <ellipse cx="133" cy="205" rx="9" ry="13" fill="#c07848"/>
+  <ellipse cx="267" cy="205" rx="9" ry="13" fill="#c07848"/>
+
+  <!-- Rudraksha mala (beads around neck) -->
+  <g opacity="0.9">
+    <circle cx="165" cy="278" r="4.5" fill="#7a3d10" stroke="#5a2d08" stroke-width="0.8"/>
+    <circle cx="178" cy="285" r="4.5" fill="#8b4613" stroke="#5a2d08" stroke-width="0.8"/>
+    <circle cx="192" cy="289" r="4.5" fill="#7a3d10" stroke="#5a2d08" stroke-width="0.8"/>
+    <circle cx="206" cy="289" r="4.5" fill="#8b4613" stroke="#5a2d08" stroke-width="0.8"/>
+    <circle cx="220" cy="285" r="4.5" fill="#7a3d10" stroke="#5a2d08" stroke-width="0.8"/>
+    <circle cx="233" cy="278" r="4.5" fill="#8b4613" stroke="#5a2d08" stroke-width="0.8"/>
+  </g>
+
+  <!-- Om symbol bottom center -->
+  <text x="200" y="396" text-anchor="middle" font-size="22" fill="#b45309" opacity="0.5" font-family="serif">ॐ</text>
+</svg>
