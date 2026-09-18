@@ -14,7 +14,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ContactCta } from "@/components/sections/ContactCta";
-import { getServiceBySlug } from "@/lib/data";
+import { getServiceBySlug, seedServices } from "@/lib/data";
 import { useConsultation } from "@/components/booking/ConsultationContext";
 import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -27,8 +27,9 @@ import {
 
 export default function ServiceDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const [service, setService] = useState<Awaited<ReturnType<typeof getServiceBySlug>> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialSeed = slug ? seedServices.find((s) => s.slug === slug && s.active) ?? null : null;
+  const [service, setService] = useState<Awaited<ReturnType<typeof getServiceBySlug>> | null>(initialSeed);
+  const [loading, setLoading] = useState(!initialSeed);
   const { openConsultation } = useConsultation();
 
   useEffect(() => {
@@ -37,13 +38,14 @@ export default function ServiceDetailPage() {
       if (!slug) return;
       const data = await getServiceBySlug(slug);
       if (!cancelled) {
-        setService(data ?? null);
+        if (data) setService(data);
         setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
   }, [slug]);
+
 
   if (loading) {
     return (

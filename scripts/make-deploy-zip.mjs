@@ -3,13 +3,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 const SOURCE = process.cwd();
-const OUTPUT = path.join(process.env.USERPROFILE || "", "Desktop", "vedic-deploy.zip");
+const OUTPUT = path.join(process.cwd(), "vedic-astrology-deploy.zip");
 
 const EXCLUDE = new Set([
-  "node_modules", ".git", "dist", ".vercel",
+  "node_modules", ".git", ".vercel",
   "android/.gradle", "android/app/build", "android/build",
   "ios/App/Pods", "ios/App/build", ".idea", ".vscode",
+  "vedic-astrology-deploy.zip", "sample-report.pdf"
 ]);
+
 
 const entries = [];
 

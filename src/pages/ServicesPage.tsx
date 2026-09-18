@@ -6,6 +6,7 @@ import { Section } from "@/components/ui/Section";
 import { Reveal } from "@/components/effects/Reveal";
 import { ContactCta } from "@/components/sections/ContactCta";
 import { getServiceCategories } from "@/lib/data";
+import { serviceCategories } from "@/lib/data/categories";
 import { JsonLd, breadcrumbSchema } from "@/components/seo/JsonLd";
 import { cn } from "@/lib/utils";
 import { siteConfig } from "@/lib/site";
@@ -18,14 +19,19 @@ const categoryGradients: Record<string, string> = {
 };
 
 export default function ServicesPage() {
-  const [categories, setCategories] = useState<Awaited<ReturnType<typeof getServiceCategories>>>([]);
-  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Awaited<ReturnType<typeof getServiceCategories>>>(() =>
+    [...serviceCategories].sort((a, b) => a.order - b.order)
+  );
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getServiceCategories()
-      .then(setCategories)
+      .then((data) => {
+        if (data && data.length) setCategories(data);
+      })
       .finally(() => setLoading(false));
   }, []);
+
 
   return (
     <>

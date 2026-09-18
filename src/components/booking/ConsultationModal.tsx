@@ -11,7 +11,7 @@ import { useState } from "react";
 import { X, Loader2, CheckCircle2, Star, Send } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { RazorpayButton, type RazorpaySuccessPayload } from "@/components/payment/RazorpayButton";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, safeJson } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -124,17 +124,18 @@ export function ConsultationModal({
           orderId: payload.razorpay_order_id || "",
         }),
       });
-      const data = await res.json();
+      const data = await safeJson<{ ok?: boolean; error?: string; report?: any; message?: string }>(res, {});
       if (!res.ok || !data.ok) throw new Error(data.error || "Report generation failed");
       setReport({ ...data.report, message: data.message });
       setStep("success");
     } catch {
       setReport({
         nakshatra: "", rashi: "", lagna: "", summary: "", remedies: "", mantras: "",
-        message: `Payment confirmed (ID: ${payload.razorpay_payment_id}). Your report will be sent to ${form.email} shortly.`,
+        message: `Payment confirmed (ID: ${payload.razorpay_payment_id}). Your consultation report will be prepared and sent to ${form.email || form.phone} shortly.`,
       });
       setStep("success");
     }
+
   }
 
   return (

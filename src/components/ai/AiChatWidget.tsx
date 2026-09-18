@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Send, Sparkles, Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, safeJson } from "@/lib/api";
+
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -106,14 +107,9 @@ export function AiChatWidget() {
         }),
       });
 
-      if (!res.ok || !res.body) {
-        let msg = "The assistant is unavailable right now.";
-        try {
-          const data = await res.json();
-          if (data?.error) msg = data.error;
-        } catch {
-          /* ignore */
-        }
+      const data = await safeJson<{ reply?: string; error?: string }>(res, {});
+      if (!res.ok || !data.reply) {
+        const msg = data.error || "Guruji Assistant is currently busy. Please try asking again in a moment.";
         setMessages((prev) => {
           const next = [...prev];
           next[next.length - 1] = { role: "assistant", content: msg };
@@ -122,13 +118,13 @@ export function AiChatWidget() {
         return;
       }
 
-      const data = await res.json();
-      const text = data.reply ?? "The assistant is unavailable right now.";
+      const text = data.reply;
       setMessages((prev) => {
         const next = [...prev];
         next[next.length - 1] = { role: "assistant", content: text };
         return next;
       });
+
     } catch {
       setMessages((prev) => {
         const next = [...prev];

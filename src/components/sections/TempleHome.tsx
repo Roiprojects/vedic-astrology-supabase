@@ -28,6 +28,9 @@ import {
   getFeaturedServices,
   getFeaturedTestimonials,
   getHomeFaqs,
+  seedHomams,
+  seedServices,
+  seedTestimonials,
 } from "@/lib/data";
 import type { Homam, Service, Testimonial } from "@/lib/data/types";
 import { gurujiProfile } from "@/lib/data/content";
@@ -69,10 +72,17 @@ const trust = [
 ];
 
 export function TempleHome() {
-  const [services, setServices] = useState<Service[]>([]);
-  const [homams, setHomams] = useState<Homam[]>([]);
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [services, setServices] = useState<Service[]>(() =>
+    seedServices.filter((s) => s.active && s.featured).sort((a, b) => a.order - b.order).slice(0, 3)
+  );
+  const [homams, setHomams] = useState<Homam[]>(() =>
+    seedHomams.filter((h) => h.active && h.featured).sort((a, b) => a.order - b.order).slice(0, 3)
+  );
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(() =>
+    seedTestimonials.filter((t) => t.featured).slice(0, 3)
+  );
   const faqs = getHomeFaqs();
+
 
   useEffect(() => {
     let cancelled = false;

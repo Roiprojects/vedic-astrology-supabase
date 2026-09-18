@@ -1,5 +1,5 @@
 param(
-  [string]$Output = "vedic-deploy.zip",
+  [string]$Output = "vedic-astrology-deploy.zip",
   [string]$Source = "."
 )
 
@@ -8,7 +8,6 @@ $ErrorActionPreference = "Stop"
 $excludeDirs = @(
   "node_modules",
   ".git",
-  "dist",
   ".vercel",
   "android\.gradle",
   "android\app\build",
@@ -18,6 +17,7 @@ $excludeDirs = @(
   ".idea",
   ".vscode"
 )
+
 
 $tmpDir = [System.IO.Path]::GetTempPath() + "vedic-zip-tmp"
 if (Test-Path $tmpDir) { Remove-Item $tmpDir -Recurse -Force }

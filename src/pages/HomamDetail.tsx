@@ -13,7 +13,7 @@ import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ContactCta } from "@/components/sections/ContactCta";
 import { HomamBookingModal } from "@/components/booking/HomamBookingModal";
-import { getHomamBySlug } from "@/lib/data";
+import { getHomamBySlug, seedHomams } from "@/lib/data";
 import { getHomamImage } from "@/lib/presentation/vedic-symbols";
 import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -26,8 +26,9 @@ import {
 
 export default function HomamDetailPage() {
   const { slug } = useParams<{ slug: string }>();
-  const [homam, setHomam] = useState<Awaited<ReturnType<typeof getHomamBySlug>> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const initialSeed = slug ? seedHomams.find((h) => h.slug === slug && h.active) ?? null : null;
+  const [homam, setHomam] = useState<Awaited<ReturnType<typeof getHomamBySlug>> | null>(initialSeed);
+  const [loading, setLoading] = useState(!initialSeed);
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -36,13 +37,14 @@ export default function HomamDetailPage() {
       if (!slug) return;
       const data = await getHomamBySlug(slug);
       if (!cancelled) {
-        setHomam(data ?? null);
+        if (data) setHomam(data);
         setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
   }, [slug]);
+
 
   if (loading) {
     return (

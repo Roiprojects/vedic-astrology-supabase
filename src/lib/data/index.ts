@@ -2,7 +2,7 @@
  * Data-access layer — all public queries go to the Express/PostgreSQL API.
  * Falls back to seed data if the API is unreachable.
  */
-import { apiFetch } from "@/lib/api";
+import { apiFetch, safeJson } from "@/lib/api";
 import { serviceCategories } from "./categories";
 import { testimonials as seedTestimonials } from "./testimonials";
 import { homeFaqs } from "./faqs";
@@ -18,6 +18,8 @@ import type { Homam, Service, ServiceCategory, Testimonial } from "./types";
 
 export { PAGE_CONFIG, isPageId, allPageIds, pageDefaults } from "./pages-store";
 export type { PageId, PageContent } from "./pages-store";
+export { seedServices, seedHomams, seedTestimonials };
+
 
 // ── Row mappers ────────────────────────────────────────────
 function mapServiceRow(row: Record<string, any>): Service {
@@ -81,15 +83,16 @@ function mapTestimonialRow(row: Record<string, any>): Testimonial {
   };
 }
 
-async function apiGet<T>(path: string): Promise<T | null> {
+async function apiGet<T>(path: string, timeoutMs = 2500): Promise<T | null> {
   try {
-    const res = await apiFetch(path);
+    const res = await apiFetch(path, { timeoutMs });
     if (!res.ok) return null;
-    return await res.json() as T;
+    return await safeJson<T | null>(res, null);
   } catch {
     return null;
   }
 }
+
 
 // ── Page content ────────────────────────────────────────────
 export async function getPageContent(id: PageId): Promise<PageContent> {

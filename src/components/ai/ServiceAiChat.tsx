@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, safeJson } from "@/lib/api";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -221,13 +221,13 @@ export function ServiceAiChat() {
         }),
       });
 
-      if (!response.ok) {
-        const data = await response.json().catch(() => null);
-        throw new Error(data?.error || "The assistant is unavailable right now.");
+      const data = await safeJson<{ reply?: string; error?: string }>(response, {});
+      if (!response.ok || !data.reply) {
+        throw new Error(data.error || "The assistant is temporarily busy. Please try asking again in a moment.");
       }
 
-      const data = await response.json();
-      const text = data.reply ?? "The assistant is unavailable right now.";
+      const text = data.reply;
+
       setMessages((current) => {
         const next = [...current];
         next[next.length - 1] = {

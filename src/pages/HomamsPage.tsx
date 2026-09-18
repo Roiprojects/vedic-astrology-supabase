@@ -5,19 +5,24 @@ import { Section } from "@/components/ui/Section";
 import { Reveal } from "@/components/effects/Reveal";
 import { HomamCard } from "@/components/cards/HomamCard";
 import { ContactCta } from "@/components/sections/ContactCta";
-import { getHomams } from "@/lib/data";
+import { getHomams, seedHomams } from "@/lib/data";
 import { JsonLd, breadcrumbSchema } from "@/components/seo/JsonLd";
 import { siteConfig } from "@/lib/site";
 
 export default function HomamsPage() {
-  const [homams, setHomams] = useState<Awaited<ReturnType<typeof getHomams>>>([]);
-  const [loading, setLoading] = useState(true);
+  const [homams, setHomams] = useState<Awaited<ReturnType<typeof getHomams>>>(() =>
+    seedHomams.filter((h) => h.active).sort((a, b) => a.order - b.order)
+  );
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getHomams()
-      .then(setHomams)
+      .then((data) => {
+        if (data && data.length) setHomams(data);
+      })
       .finally(() => setLoading(false));
   }, []);
+
 
   return (
     <>

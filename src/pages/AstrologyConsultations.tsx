@@ -5,19 +5,24 @@ import { Section } from "@/components/ui/Section";
 import { Reveal } from "@/components/effects/Reveal";
 import { ServiceCard } from "@/components/cards/ServiceCard";
 import { ContactCta } from "@/components/sections/ContactCta";
-import { getServices } from "@/lib/data";
+import { getServices, seedServices } from "@/lib/data";
 import { JsonLd, breadcrumbSchema } from "@/components/seo/JsonLd";
 import { siteConfig } from "@/lib/site";
 
 export default function AstrologyConsultationsPage() {
-  const [services, setServices] = useState<Awaited<ReturnType<typeof getServices>>>([]);
-  const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<Awaited<ReturnType<typeof getServices>>>(() =>
+    seedServices.filter((s) => s.active).sort((a, b) => a.order - b.order)
+  );
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getServices()
-      .then(setServices)
+      .then((data) => {
+        if (data && data.length) setServices(data);
+      })
       .finally(() => setLoading(false));
   }, []);
+
 
   return (
     <>

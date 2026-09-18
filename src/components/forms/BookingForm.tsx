@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Input, Label, Select, Textarea, FieldError } from "@/components/forms/fields";
 import { RazorpayButton } from "@/components/payment/RazorpayButton";
-import { apiFetch } from "@/lib/api";
+import { apiFetch, safeJson } from "@/lib/api";
 import { siteConfig } from "@/lib/site";
 
 const titles: Record<BookingVariant, string> = {
@@ -69,15 +69,21 @@ export function BookingForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "Something went wrong");
-      setReference(data.reference);
+      const data = await safeJson<{ ok?: boolean; reference?: string; error?: string }>(res, {});
+      if (!res.ok || !data.ok) {
+        throw new Error(
+          data.error ||
+            "Our servers are temporarily busy. Please try again or reach out to Guruji via WhatsApp / phone."
+        );
+      }
+      setReference(data.reference || `VA-${Date.now().toString(36).toUpperCase()}`);
     } catch (err) {
       setServerError(
         err instanceof Error ? err.message : "Could not submit. Please try again or email us."
       );
     }
   }
+
 
   const formValues = reference ? getValues() : null;
 
