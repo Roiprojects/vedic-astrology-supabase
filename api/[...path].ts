@@ -352,6 +352,7 @@ Rules:
 - The user may mention a specific service they are interested in. Keep your answers relevant to that service when they do.`;
 
 async function callGemini(model: string, messages: any[]): Promise<string> {
+  console.log("[chat] calling Gemini model:", model, "messages:", messages.length);
   const contents = [
     { role: "user", parts: [{ text: ASTROLOGY_SYSTEM_PROMPT }] },
     ...messages.map((m) => ({
@@ -367,12 +368,19 @@ async function callGemini(model: string, messages: any[]): Promise<string> {
       body: JSON.stringify({ contents, generationConfig: { temperature: 0.7, maxOutputTokens: 512 } }),
     }
   );
-  if (!resp.ok) throw new Error(`Gemini error: ${resp.status}`);
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => "unknown");
+    console.error("[chat] Gemini HTTP error:", resp.status, errText);
+    throw new Error(`Gemini error: ${resp.status}`);
+  }
   const data = await resp.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "I couldn't generate a response. Please try again.";
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!text) console.warn("[chat] Gemini returned empty content:", JSON.stringify(data).slice(0, 200));
+  return text || "I couldn't generate a response. Please try again.";
 }
 
 async function callOpenAI(model: string, messages: any[]): Promise<string> {
+  console.log("[chat] calling OpenAI model:", model, "messages:", messages.length);
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -389,9 +397,15 @@ async function callOpenAI(model: string, messages: any[]): Promise<string> {
       max_tokens: 512,
     }),
   });
-  if (!resp.ok) throw new Error(`OpenAI error: ${resp.status}`);
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => "unknown");
+    console.error("[chat] OpenAI HTTP error:", resp.status, errText);
+    throw new Error(`OpenAI error: ${resp.status}`);
+  }
   const data = await resp.json();
-  return data?.choices?.[0]?.message?.content?.trim() || "I couldn't generate a response. Please try again.";
+  const text = data?.choices?.[0]?.message?.content?.trim();
+  if (!text) console.warn("[chat] OpenAI returned empty content:", JSON.stringify(data).slice(0, 200));
+  return text || "I couldn't generate a response. Please try again.";
 }
 
 async function handleChat(req: VercelRequest, res: VercelResponse) {
@@ -420,6 +434,8 @@ async function handleChat(req: VercelRequest, res: VercelResponse) {
 
   const hasGemini = !!process.env.GEMINI_API_KEY;
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  console.log("[chat] keys present:", { hasGemini, hasOpenAI });
+
   if (!hasGemini && !hasOpenAI) return json(res, 503, { error: "The AI service is not configured." });
 
   try {
@@ -430,15 +446,24 @@ async function handleChat(req: VercelRequest, res: VercelResponse) {
     if (hasGemini) {
       try {
         reply = await callGemini(geminiModel, history);
-      } catch {
-        reply = hasOpenAI
-          ? await callOpenAI(openaiModel, history)
-          : "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
+      } catch (geminiErr) {
+        console.error("[chat] Gemini failed:", geminiErr);
+        if (hasOpenAI) {
+          try {
+            reply = await callOpenAI(openaiModel, history);
+          } catch (openaiErr) {
+            console.error("[chat] OpenAI fallback also failed:", openaiErr);
+            reply = "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
+          }
+        } else {
+          reply = "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
+        }
       }
     } else if (hasOpenAI) {
       try {
         reply = await callOpenAI(openaiModel, history);
-      } catch {
+      } catch (openaiErr) {
+        console.error("[chat] OpenAI failed:", openaiErr);
         reply = "I'm having trouble connecting right now. Please speak directly with Guruji at +91 98861 00565 for personalized guidance.";
       }
     } else {
@@ -448,9 +473,10 @@ async function handleChat(req: VercelRequest, res: VercelResponse) {
     if (!res.writableEnded) {
       json(res, 200, { reply });
     }
-  } catch {
+  } catch (err) {
+    console.error("[chat] Unhandled error:", err);
     if (!res.writableEnded) {
-      json(res, 500, { error: "Something went wrong. Please try again." });
+      json(res, 500, { error: err instanceof Error ? err.message : "Something went wrong. Please try again." });
     }
   }
 }
