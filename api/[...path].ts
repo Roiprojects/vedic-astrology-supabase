@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
 
 const supa = createClient(
   process.env.SUPABASE_URL || "",
@@ -17,6 +18,56 @@ const corsHeaders = (res: VercelResponse, req: VercelRequest) => {
 
 function json(res: VercelResponse, code: number, data: any) {
   res.status(code).setHeader("Content-Type", "application/json").json(data);
+}
+
+// ── Email helper ─────────────────────────────────────────────────────────────
+let transporter: nodemailer.Transporter | null = null;
+
+async function getTransporter(): Promise<nodemailer.Transporter | null> {
+  if (transporter) return transporter;
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT) || 587;
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const tlsServername = process.env.SMTP_TLS_SERVERNAME;
+  if (!host || !user || !pass) return null;
+  try {
+    transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      requireTLS: port !== 465,
+      auth: { user, pass },
+      tls: tlsServername ? { servername: tlsServername } : undefined,
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
+    });
+    return transporter;
+  } catch {
+    return null;
+  }
+}
+
+async function sendEmailDirect(opts: { to: string; subject: string; html: string; text?: string }): Promise<void> {
+  const t = await getTransporter();
+  if (!t) {
+    console.info("[api] SMTP not configured — email not sent:", opts.subject);
+    return;
+  }
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@myvedicastrology.in";
+  try {
+    await t.sendMail({
+      from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text || opts.html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(),
+    });
+    console.info("[api] email sent:", opts.subject, "->", opts.to);
+  } catch (e) {
+    console.error("[api] email failed:", e);
+  }
 }
 
 // ─── camelCase → snake_case field mappers ───────────────────────────────────
@@ -492,11 +543,80 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  // /api/enquiries, /api/contact, /api/orders
-  if (parts[0] === "enquiries" && req.method === "POST") {
-    const enquiry = (req as any).body || {};
-    supa.from("enquiries").insert(enquiry).select().single().then(({ data }) => json(res, 201, { enquiry: data }));
-    return;
+  // /api/enquiry (singular) and /api/enquiries — form submissions with email notifications
+  if ((parts[0] === "enquiry" || parts[0] === "enquiries") && req.method === "POST") {
+    const body = (req as any).body || {};
+    const variant = body.variant || "contact";
+
+    // Generate reference
+    const reference = `VA-${Date.now().toString(36).toUpperCase()}`;
+    body.reference = reference;
+
+    // Save to database
+    const { data: enquiry, error: dbError } = await supa
+      .from("enquiries")
+      .insert(body)
+      .select()
+      .single();
+
+    if (dbError) {
+      return json(res, 503, { error: "Booking service is temporarily unavailable. Please try again." });
+    }
+
+    // Send admin notification email
+    const typeLabel = variant === "homam" ? "Homam Booking" : variant === "consultation" ? "Consultation" : "Enquiry";
+    const adminHtml = `
+<div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
+  <h2 style="color:#b45309;">New ${typeLabel} — ${reference}</h2>
+  <table style="width:100%;border-collapse:collapse;">
+    <tr><td style="padding:6px 0;color:#888;width:140px;">Name</td><td style="padding:6px 0;font-weight:bold;">${body.name || ""}</td></tr>
+    <tr><td style="padding:6px 0;color:#888;width:140px;">Phone</td><td style="padding:6px 0;">${body.phone || ""}</td></tr>
+    ${body.email ? `<tr><td style="padding:6px 0;color:#888;width:140px;">Email</td><td style="padding:6px 0;">${body.email}</td></tr>` : ""}
+    ${body.subject ? `<tr><td style="padding:6px 0;color:#888;width:140px;">Service</td><td style="padding:6px 0;">${body.subject}</td></tr>` : ""}
+    ${body.dob ? `<tr><td style="padding:6px 0;color:#888;width:140px;">Date of Birth</td><td style="padding:6px 0;">${body.dob}</td></tr>` : ""}
+    ${body.tob ? `<tr><td style="padding:6px 0;color:#888;width:140px;">Time of Birth</td><td style="padding:6px 0;">${body.tob}</td></tr>` : ""}
+    ${body.pob ? `<tr><td style="padding:6px 0;color:#888;width:140px;">Place of Birth</td><td style="padding:6px 0;">${body.pob}</td></tr>` : ""}
+    ${body.message ? `<tr><td style="padding:6px 0;color:#888;vertical-align:top;">Message</td><td style="padding:6px 0;">${body.message}</td></tr>` : ""}
+  </table>
+  <p style="margin-top:20px;color:#666;font-size:12px;">View in admin: <a href="${process.env.FRONTEND_URL || 'https://myvedicastrology.in'}/admin/enquiries">Admin Panel → Enquiries</a></p>
+</div>`;
+
+    // Fire-and-forget email (don't block the response)
+    sendEmailDirect({
+      to: "info@myvedicastrology.in",
+      subject: `New ${typeLabel}: ${body.name || "Customer"} — ${reference}`,
+      html: adminHtml,
+    }).catch(() => {});
+
+    // Send customer confirmation if email provided
+    if (body.email) {
+      const customerHtml = `
+<div style="font-family:Georgia,serif;max-width:600px;margin:0 auto;background:#fffbf0;border:1px solid #e9c97e;border-radius:12px;overflow:hidden;">
+  <div style="background:#b45309;padding:28px 32px;">
+    <h1 style="margin:0;color:white;font-size:22px;letter-spacing:0.5px;">ॐ My Vedic Astrology</h1>
+    <p style="margin:8px 0 0;color:#ffe9b3;font-size:13px;">Sampath Kumara Guruji · Bangalore</p>
+  </div>
+  <div style="padding:28px 32px;">
+    <p style="font-size:16px;color:#1c1010;">Namaste, <strong>${body.name || "Valued Customer"}</strong> 🙏</p>
+    <p style="color:#4b3320;line-height:1.7;">Thank you for reaching out to My Vedic Astrology. We have received your request for <strong>${body.subject || "our services"}</strong> and Guruji will review your details and get back to you shortly.</p>
+    <div style="background:#fef3c7;border-left:4px solid #b45309;padding:14px 18px;margin:20px 0;border-radius:0 8px 8px 0;">
+      <p style="margin:0;font-size:12px;color:#7c4a00;text-transform:uppercase;letter-spacing:0.08em;">Your Reference Number</p>
+      <p style="margin:0;font-size:28px;font-weight:bold;letter-spacing:4px;color:#b45309;font-family:monospace;">${reference}</p>
+      <p style="margin:6px 0 0;font-size:12px;color:#7c4a00;">Please keep this safe for follow-up</p>
+    </div>
+    <p style="color:#4b3320;line-height:1.7;">Guruji will reach out to you within 24–48 hours via phone or email. For urgent queries, call <a href="tel:+919886100565" style="color:#b45309;">+91 98861 00565</a>.</p>
+    <p style="margin-top:24px;color:#4b3320;">With blessings,<br/><strong style="color:#b45309;">Sampath Kumara Guruji</strong><br/>My Vedic Astrology · Bangalore<br/><a href="https://myvedicastrology.in" style="color:#b45309;">myvedicastrology.in</a></p>
+  </div>
+</div>`;
+
+      sendEmailDirect({
+        to: body.email,
+        subject: `Your Enquiry Confirmation — ${reference} | My Vedic Astrology`,
+        html: customerHtml,
+      }).catch(() => {});
+    }
+
+    return json(res, 201, { ok: true, reference, enquiry });
   }
   if (parts[0] === "contact" && req.method === "POST") {
     const contact = (req as any).body || {};

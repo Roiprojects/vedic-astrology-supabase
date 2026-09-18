@@ -25,6 +25,7 @@ export type Service = {
   image?: string;
   shortDescription: string;
   fullDescription: string;
+  content?: string;
   problem: string;
   price: number;
   discountPrice?: number | null;

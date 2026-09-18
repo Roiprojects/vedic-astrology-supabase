@@ -23,7 +23,7 @@ export type { PageId, PageContent } from "./pages-store";
 function mapServiceRow(row: Record<string, any>): Service {
   return {
     slug: row.slug,
-    title: row.title,
+    title: row.title || "",
     categorySlug: row.category_slug ?? "",
     icon: row.icon ?? "🔮",
     image: row.image ?? undefined,
@@ -106,7 +106,18 @@ export async function getServiceCategories(): Promise<ServiceCategory[]> {
 // ── Services ────────────────────────────────────────────────
 export async function getServices(): Promise<Service[]> {
   const data = await apiGet<{ services: Record<string, any>[] }>("/api/public/services");
-  if (data?.services?.length) return data.services.map(mapServiceRow);
+  if (data?.services?.length) {
+    const mapped = data.services.map(mapServiceRow);
+    // If DB rows have empty content, fall back to seed data for those services
+    const seedMap = new Map(seedServices.filter((s) => s.active).sort((a, b) => a.order - b.order).map((s) => [s.slug, s]));
+    return mapped.map((m) => {
+      const seed = seedMap.get(m.slug);
+      if (seed && (!m.fullDescription || !m.content)) {
+        return { ...m, fullDescription: m.fullDescription || seed.fullDescription, content: m.content || seed.fullDescription, problem: m.problem || seed.problem, analysis: m.analysis?.length ? m.analysis : seed.analysis, benefits: m.benefits?.length ? m.benefits : seed.benefits, remedies: m.remedies?.length ? m.remedies : seed.remedies, faqs: m.faqs?.length ? m.faqs : seed.faqs };
+      }
+      return m;
+    });
+  }
   return seedServices.filter((s) => s.active).sort((a, b) => a.order - b.order);
 }
 
