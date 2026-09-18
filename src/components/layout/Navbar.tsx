@@ -32,7 +32,7 @@ function ServicesMegaMenu() {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLLIElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!open) {
