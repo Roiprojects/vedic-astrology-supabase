@@ -1,7 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { createClient } from "@supabase/supabase-js";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
 
 const supa = createClient(
   process.env.SUPABASE_URL || "",
@@ -29,7 +28,6 @@ async function getTransporter(): Promise<nodemailer.Transporter | null> {
   const port = Number(process.env.SMTP_PORT) || 587;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const tlsServername = process.env.SMTP_TLS_SERVERNAME;
   if (!host || !user || !pass) return null;
   try {
     transporter = nodemailer.createTransport({
@@ -38,7 +36,6 @@ async function getTransporter(): Promise<nodemailer.Transporter | null> {
       secure: port === 465,
       requireTLS: port !== 465,
       auth: { user, pass },
-      tls: tlsServername ? { servername: tlsServername } : undefined,
       connectionTimeout: 15000,
       greetingTimeout: 15000,
       socketTimeout: 30000,
@@ -195,6 +192,17 @@ function isAdmin(req: VercelRequest, res: VercelResponse): boolean {
   try { jwt.verify(token, process.env.JWT_SECRET || ""); }
   catch { json(res, 401, { error: "Invalid session" }); return false; }
   return true;
+}
+
+function handleAdminEnquiries(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "GET") {
+    supa.from("enquiries").select("*").order("created_at", { ascending: false }).then(({ data, error }) => {
+      if (error) return json(res, 500, { error: error.message });
+      json(res, 200, { enquiries: data || [] });
+    });
+    return;
+  }
+  json(res, 405, { error: "Method not allowed" });
 }
 
 function handleAdminServices(req: VercelRequest, res: VercelResponse, slug?: string) {
@@ -440,7 +448,7 @@ async function handleChat(req: VercelRequest, res: VercelResponse) {
 
   try {
     let reply: string;
-    const geminiModel = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const geminiModel = process.env.GEMINI_MODEL || "gemini-3.6-flash";
     const openaiModel = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
     if (hasGemini) {
@@ -555,6 +563,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (group === "homams") return handleAdminHomams(req, res, slug);
     if (group === "astrologers") return handleAdminAstrologers(req, res);
     if (group === "testimonials") return handleAdminTestimonials(req, res);
+    if (group === "enquiries") return handleAdminEnquiries(req, res);
     if (group === "pages" && slug) return handleAdminPages(req, res, slug);
     if (group === "upload") return handleAdminUpload(req, res);
     return json(res, 404, { error: "Not found" });
