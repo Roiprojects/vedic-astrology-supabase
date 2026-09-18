@@ -32,30 +32,37 @@ function ServicesMegaMenu() {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLLIElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Close on outside click
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      clearTimeout(closeTimerRef.current);
+      return;
+    }
+
     const handleClick = (e: MouseEvent) => {
       const target = e.target as Node;
       if (
-        menuRef.current && !menuRef.current.contains(target) &&
-        triggerRef.current && !triggerRef.current.contains(target)
+        menuRef.current &&
+        !menuRef.current.contains(target) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(target)
       ) {
         setOpen(false);
       }
     };
+
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    // Delay listener so the opening click doesn't immediately close it
-    const timer = setTimeout(() => {
-      document.addEventListener("mousedown", handleClick);
-    }, 100);
+
+    closeTimerRef.current = setTimeout(() => {
+      document.addEventListener("click", handleClick);
+    }, 0);
     document.addEventListener("keydown", handleKey);
     return () => {
-      clearTimeout(timer);
-      document.removeEventListener("mousedown", handleClick);
+      clearTimeout(closeTimerRef.current);
+      document.removeEventListener("click", handleClick);
       document.removeEventListener("keydown", handleKey);
     };
   }, [open]);
@@ -65,6 +72,9 @@ function ServicesMegaMenu() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        onMouseDown={(e) => {
+          if (open) e.stopPropagation();
+        }}
         className={cn(
           "flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors",
           open ? "text-gold-light" : "text-muted hover:text-ink"
@@ -77,6 +87,7 @@ function ServicesMegaMenu() {
       {open && (
         <div
           ref={menuRef}
+          onMouseDown={(e) => e.stopPropagation()}
           className="absolute left-0 top-full w-[720px] max-w-[calc(100vw-2rem)] pt-3 opacity-100"
         >
           <div className="glass-card overflow-hidden rounded-2xl shadow-xl">
