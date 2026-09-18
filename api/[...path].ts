@@ -548,20 +548,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = (req as any).body || {};
     const variant = body.variant || "contact";
 
-    // Generate reference
-    const reference = `VA-${Date.now().toString(36).toUpperCase()}`;
-    body.reference = reference;
+    // Map camelCase form fields → snake_case DB columns; drop unknown fields
+    const dbRow: Record<string, unknown> = {
+      reference: `VA-${Date.now().toString(36).toUpperCase()}`,
+      variant,
+      subject: body.subject || "",
+      name: body.name || "",
+      phone: body.phone || "",
+      email: body.email || null,
+      dob: body.dob || null,
+      tob: body.tob || null,
+      pob: body.pob || null,
+      gender: body.gender || null,
+      preferred_mode: body.preferredMode || body.preferred_mode || null,
+      preferred_date: body.preferredDate || body.preferred_date || null,
+      message: body.message || null,
+      service_interested: body.serviceInterested || body.service_interested || null,
+      preferred_contact: body.preferredContact || body.preferred_contact || null,
+      status: "new",
+    };
 
     // Save to database
     const { data: enquiry, error: dbError } = await supa
       .from("enquiries")
-      .insert(body)
+      .insert(dbRow)
       .select()
       .single();
 
     if (dbError) {
-      return json(res, 503, { error: "Booking service is temporarily unavailable. Please try again." });
+      const msg = dbError.message || "Database error";
+      console.error("[enquiry] DB insert failed:", dbError);
+      return json(res, 503, { error: msg });
     }
+
+    const reference = dbRow.reference as string;
 
     // Send admin notification email
     const typeLabel = variant === "homam" ? "Homam Booking" : variant === "consultation" ? "Consultation" : "Enquiry";
