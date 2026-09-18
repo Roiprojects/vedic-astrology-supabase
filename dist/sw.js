@@ -1,7 +1,7 @@
 /* Vedic Astrology — minimal, safe service worker (network-first). */
-// 1789727120663 is replaced with the actual epoch ms string at build time by vite.config.ts.
+// 1789731817174 is replaced with the actual epoch ms string at build time by vite.config.ts.
 // This ensures each deployment uses a unique cache name, busting stale files for all users.
-const CACHE = "va-cache-1789727120663";
+const CACHE = "va-cache-1789731817174";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
