@@ -7,7 +7,7 @@ import { SectionHeading } from "@/components/ui/SectionHeading";
 import { IconList } from "@/components/ui/IconList";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { ContactCta } from "@/components/sections/ContactCta";
-import { getPageContent } from "@/lib/data";
+import { getPageContent, pageDefaults } from "@/lib/data";
 import { PriceBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useConsultation } from "@/components/booking/ConsultationContext";
@@ -21,13 +21,17 @@ const highlights = [
 ];
 
 export default function BirthChartPdfPage() {
-  const [content, setContent] = useState<Awaited<ReturnType<typeof getPageContent>> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState<Awaited<ReturnType<typeof getPageContent>>>(() =>
+    pageDefaults("birth-chart-pdf")
+  );
+  const [loading, setLoading] = useState(false);
   const { openConsultation } = useConsultation();
 
   useEffect(() => {
     getPageContent("birth-chart-pdf")
-      .then(setContent)
+      .then((data) => {
+        if (data) setContent(data);
+      })
       .finally(() => setLoading(false));
   }, []);
 

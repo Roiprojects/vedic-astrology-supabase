@@ -32,32 +32,35 @@ router.post("/login", async (req, res) => {
   const token = jwt.sign({ isAdmin: true }, JWT_SECRET, { expiresIn: "7d" });
   res.cookie("admin_token", token, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: COOKIE_MAX_AGE,
     secure: process.env.NODE_ENV === "production" || req.secure,
   });
-  return res.json({ ok: true });
+  return res.json({ ok: true, token, authenticated: true, isAdmin: true });
 });
 
 router.post("/logout", (req, res) => {
   res.clearCookie("admin_token", {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     secure: process.env.NODE_ENV === "production" || req.secure,
   });
   return res.json({ ok: true });
 });
 
 router.get("/me", async (req, res) => {
-  const token = req.cookies?.admin_token;
-  if (!token) return res.json({ isAdmin: false });
+  const authHeader = req.headers.authorization;
+  const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const token = bearerToken || req.cookies?.admin_token;
+  if (!token) return res.json({ isAdmin: false, authenticated: false });
   const { JWT_SECRET } = await getAdminConfig();
-  if (!JWT_SECRET) return res.json({ isAdmin: false });
+  if (!JWT_SECRET) return res.json({ isAdmin: false, authenticated: false });
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { isAdmin: boolean };
-    return res.json({ isAdmin: Boolean(payload.isAdmin) });
+    const isAdmin = Boolean(payload.isAdmin);
+    return res.json({ isAdmin, authenticated: isAdmin });
   } catch {
-    return res.json({ isAdmin: false });
+    return res.json({ isAdmin: false, authenticated: false });
   }
 });
 

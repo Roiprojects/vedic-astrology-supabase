@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { FaqAccordion } from "@/components/ui/FaqAccordion";
 import { BookingForm } from "@/components/forms/BookingForm";
 import { ContactCta } from "@/components/sections/ContactCta";
-import { getPageContent } from "@/lib/data";
+import { getPageContent, pageDefaults } from "@/lib/data";
 import { siteConfig } from "@/lib/site";
 import { JsonLd, breadcrumbSchema, faqSchema } from "@/components/seo/JsonLd";
 
@@ -21,12 +21,16 @@ const features = [
 ];
 
 export default function ChatWithGurujiPage() {
-  const [content, setContent] = useState<Awaited<ReturnType<typeof getPageContent>> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState<Awaited<ReturnType<typeof getPageContent>>>(() =>
+    pageDefaults("chat-with-guruji")
+  );
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getPageContent("chat-with-guruji")
-      .then(setContent)
+      .then((data) => {
+        if (data) setContent(data);
+      })
       .finally(() => setLoading(false));
   }, []);
 

@@ -8,7 +8,7 @@ import { PalmReader } from "@/components/ai/PalmReader";
 import { ContactCta } from "@/components/sections/ContactCta";
 import { JsonLd, breadcrumbSchema } from "@/components/seo/JsonLd";
 import { Badge } from "@/components/ui/Badge";
-import { getPageContent } from "@/lib/data";
+import { getPageContent, pageDefaults } from "@/lib/data";
 import { siteConfig } from "@/lib/site";
 
 const steps = [
@@ -18,12 +18,16 @@ const steps = [
 ];
 
 export default function PalmReadingPage() {
-  const [content, setContent] = useState<Awaited<ReturnType<typeof getPageContent>> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState<Awaited<ReturnType<typeof getPageContent>>>(() =>
+    pageDefaults("palm-reading")
+  );
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     getPageContent("palm-reading")
-      .then(setContent)
+      .then((data) => {
+        if (data) setContent(data);
+      })
       .finally(() => setLoading(false));
   }, []);
 
